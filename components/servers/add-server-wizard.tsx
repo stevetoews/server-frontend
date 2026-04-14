@@ -1,5 +1,11 @@
+"use client";
+
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { createServer, type OnboardingSnapshot } from "@/lib/api";
 
 const steps = [
   "Draft server record",
@@ -8,9 +14,50 @@ const steps = [
   "Require provider match",
   "Allow SpinupWP mapping",
   "Start health checks",
-];
+] as const;
 
 export function AddServerWizard() {
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+  const [name, setName] = useState("");
+  const [environment, setEnvironment] = useState<"production" | "staging" | "development">("production");
+  const [hostname, setHostname] = useState("");
+  const [ipAddress, setIpAddress] = useState("");
+  const [sshUsername, setSshUsername] = useState("root");
+  const [sshAuthMode, setSshAuthMode] = useState<"private_key" | "passwordless_agent">("private_key");
+  const [notes, setNotes] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [onboarding, setOnboarding] = useState<OnboardingSnapshot | null>(null);
+
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError(null);
+
+    startTransition(async () => {
+      try {
+        const payload = await createServer({
+          name,
+          environment,
+          hostname,
+          sshUsername,
+          sshAuthMode,
+          ...(ipAddress.trim() ? { ipAddress: ipAddress.trim() } : {}),
+          ...(notes.trim() ? { notes: notes.trim() } : {}),
+        });
+
+        setOnboarding(payload.data.onboarding);
+        router.push(`/servers/${payload.data.server.id}`);
+        router.refresh();
+      } catch (submissionError) {
+        setError(
+          submissionError instanceof Error
+            ? submissionError.message
+            : "Unable to save server draft",
+        );
+      }
+    });
+  }
+
   return (
     <div className="grid gap-6 xl:grid-cols-[300px_minmax(0,1fr)]">
       <Card className="space-y-4">
@@ -32,7 +79,7 @@ export function AddServerWizard() {
                 <p className="text-xs text-muted-foreground">
                   {index === 3
                     ? "Activation remains blocked until Linode or DigitalOcean is confirmed."
-                    : "Wizard shell step ready for backend integration."}
+                    : "This step is now driven by the backend onboarding API."}
                 </p>
               </div>
             </li>
@@ -47,75 +94,124 @@ export function AddServerWizard() {
               SSH-first onboarding
             </h1>
             <p className="text-sm text-muted-foreground">
-              Capture the draft record first, then move into verification, discovery, provider matching, and post-match SpinupWP linking.
+              Save the draft, test SSH immediately, discover host metadata, then rank provider candidates before any activation.
             </p>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2">
-            <label className="space-y-2">
-              <span className="text-sm font-medium text-foreground">Server name</span>
-              <input className="h-12 rounded-2xl border border-border bg-white px-4 text-sm" placeholder="wp-prod-01" />
-            </label>
-            <label className="space-y-2">
-              <span className="text-sm font-medium text-foreground">Environment</span>
-              <select className="h-12 rounded-2xl border border-border bg-white px-4 text-sm">
-                <option>production</option>
-                <option>staging</option>
-                <option>development</option>
-              </select>
-            </label>
-            <label className="space-y-2">
-              <span className="text-sm font-medium text-foreground">Hostname</span>
-              <input className="h-12 rounded-2xl border border-border bg-white px-4 text-sm" placeholder="host.example.com" />
-            </label>
-            <label className="space-y-2">
-              <span className="text-sm font-medium text-foreground">Public IP</span>
-              <input className="h-12 rounded-2xl border border-border bg-white px-4 text-sm" placeholder="203.0.113.10" />
-            </label>
-            <label className="space-y-2">
-              <span className="text-sm font-medium text-foreground">SSH user</span>
-              <input className="h-12 rounded-2xl border border-border bg-white px-4 text-sm" placeholder="root" />
-            </label>
-            <label className="space-y-2">
-              <span className="text-sm font-medium text-foreground">SSH auth mode</span>
-              <select className="h-12 rounded-2xl border border-border bg-white px-4 text-sm">
-                <option>private_key</option>
-                <option>passwordless_agent</option>
-              </select>
-            </label>
-          </div>
+          <form className="space-y-5" onSubmit={handleSubmit}>
+            <div className="grid gap-4 md:grid-cols-2">
+              <label className="space-y-2">
+                <span className="text-sm font-medium text-foreground">Server name</span>
+                <input
+                  className="h-12 rounded-2xl border border-border bg-white px-4 text-sm"
+                  onChange={(event) => setName(event.target.value)}
+                  placeholder="wp-prod-01"
+                  value={name}
+                />
+              </label>
+              <label className="space-y-2">
+                <span className="text-sm font-medium text-foreground">Environment</span>
+                <select
+                  className="h-12 rounded-2xl border border-border bg-white px-4 text-sm"
+                  onChange={(event) =>
+                    setEnvironment(event.target.value as "production" | "staging" | "development")
+                  }
+                  value={environment}
+                >
+                  <option value="production">production</option>
+                  <option value="staging">staging</option>
+                  <option value="development">development</option>
+                </select>
+              </label>
+              <label className="space-y-2">
+                <span className="text-sm font-medium text-foreground">Hostname</span>
+                <input
+                  className="h-12 rounded-2xl border border-border bg-white px-4 text-sm"
+                  onChange={(event) => setHostname(event.target.value)}
+                  placeholder="host.example.com"
+                  value={hostname}
+                />
+              </label>
+              <label className="space-y-2">
+                <span className="text-sm font-medium text-foreground">Public IP</span>
+                <input
+                  className="h-12 rounded-2xl border border-border bg-white px-4 text-sm"
+                  onChange={(event) => setIpAddress(event.target.value)}
+                  placeholder="203.0.113.10"
+                  value={ipAddress}
+                />
+              </label>
+              <label className="space-y-2">
+                <span className="text-sm font-medium text-foreground">SSH user</span>
+                <input
+                  className="h-12 rounded-2xl border border-border bg-white px-4 text-sm"
+                  onChange={(event) => setSshUsername(event.target.value)}
+                  placeholder="root"
+                  value={sshUsername}
+                />
+              </label>
+              <label className="space-y-2">
+                <span className="text-sm font-medium text-foreground">SSH auth mode</span>
+                <select
+                  className="h-12 rounded-2xl border border-border bg-white px-4 text-sm"
+                  onChange={(event) =>
+                    setSshAuthMode(event.target.value as "private_key" | "passwordless_agent")
+                  }
+                  value={sshAuthMode}
+                >
+                  <option value="private_key">private_key</option>
+                  <option value="passwordless_agent">passwordless_agent</option>
+                </select>
+              </label>
+            </div>
 
-          <label className="block space-y-2">
-            <span className="text-sm font-medium text-foreground">Notes</span>
-            <textarea
-              className="min-h-32 w-full rounded-[1.5rem] border border-border bg-white px-4 py-3 text-sm"
-              placeholder="Internal notes, maintenance windows, or escalation context"
-            />
-          </label>
+            <label className="block space-y-2">
+              <span className="text-sm font-medium text-foreground">Notes</span>
+              <textarea
+                className="min-h-32 w-full rounded-[1.5rem] border border-border bg-white px-4 py-3 text-sm"
+                onChange={(event) => setNotes(event.target.value)}
+                placeholder="Internal notes, maintenance windows, or escalation context"
+                value={notes}
+              />
+            </label>
 
-          <div className="flex flex-wrap gap-3">
-            <Button type="button">Save Draft and Test SSH</Button>
-            <Button type="button" variant="secondary">
-              Preview Provider Matching
-            </Button>
-          </div>
+            {error ? (
+              <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                {error}
+              </div>
+            ) : null}
+
+            <div className="flex flex-wrap gap-3">
+              <Button disabled={isPending} type="submit">
+                {isPending ? "Saving Draft..." : "Save Draft and Test SSH"}
+              </Button>
+              <Button disabled type="button" variant="secondary">
+                Preview Provider Matching
+              </Button>
+            </div>
+          </form>
         </Card>
 
         <Card className="space-y-4">
           <h2 className="text-lg font-semibold text-foreground">Provider match gate</h2>
-          <div className="grid gap-3 md:grid-cols-2">
-            {[
-              "Linode candidate: wp-prod-01-linode",
-              "DigitalOcean candidate: wp-prod-01-droplet",
-            ].map((item) => (
-              <div className="rounded-2xl border border-border bg-white/80 p-4 text-sm text-foreground" key={item}>
-                {item}
+          {onboarding ? (
+            <div className="space-y-4">
+              <div className="rounded-2xl border border-border bg-white/80 p-4 text-sm text-foreground">
+                SSH latency: {onboarding.ssh.latencyMs}ms. Discovery host: {onboarding.discovery.hostname}. Next step: {onboarding.nextStep}
               </div>
-            ))}
-          </div>
-          <p className="text-sm text-muted-foreground">
-            SpinupWP mapping controls should stay disabled until one of the primary provider matches is explicitly confirmed.
-          </p>
+              <div className="grid gap-3 md:grid-cols-2">
+                {onboarding.providerMatches.map((match) => (
+                  <div className="rounded-2xl border border-border bg-white/80 p-4 text-sm text-foreground" key={`${match.providerKind}:${match.providerInstanceId}`}>
+                    {match.providerKind} candidate: {match.providerInstanceId}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Submit the draft to see SSH verification, discovery, and provider candidates from the backend.
+            </p>
+          )}
         </Card>
       </div>
     </div>

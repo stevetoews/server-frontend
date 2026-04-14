@@ -1,7 +1,38 @@
+"use client";
+
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { login } from "@/lib/api";
 
 export function LoginForm() {
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError(null);
+
+    startTransition(async () => {
+      try {
+        await login({ email, password });
+        router.push("/dashboard");
+        router.refresh();
+      } catch (submissionError) {
+        setError(
+          submissionError instanceof Error
+            ? submissionError.message
+            : "Unable to sign in",
+        );
+      }
+    });
+  }
+
   return (
     <Card className="w-full max-w-md space-y-6">
       <div className="space-y-2">
@@ -16,13 +47,15 @@ export function LoginForm() {
         </p>
       </div>
 
-      <form className="space-y-4">
+      <form className="space-y-4" onSubmit={handleSubmit}>
         <label className="block space-y-2">
           <span className="text-sm font-medium text-foreground">Email</span>
           <input
             className="h-12 w-full rounded-2xl border border-border bg-white px-4 text-sm outline-none ring-0 transition placeholder:text-slate-400 focus:border-primary"
             placeholder="ops@example.com"
             type="email"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
           />
         </label>
 
@@ -32,16 +65,24 @@ export function LoginForm() {
             className="h-12 w-full rounded-2xl border border-border bg-white px-4 text-sm outline-none ring-0 transition placeholder:text-slate-400 focus:border-primary"
             placeholder="••••••••••••"
             type="password"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
           />
         </label>
 
-        <Button className="w-full" type="submit">
-          Sign In
+        {error ? (
+          <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+            {error}
+          </div>
+        ) : null}
+
+        <Button className="w-full" disabled={isPending} type="submit">
+          {isPending ? "Signing In..." : "Sign In"}
         </Button>
       </form>
 
       <div className="rounded-2xl border border-dashed border-border bg-accent/60 p-4 text-sm text-muted-foreground">
-        Session and credential handling are still scaffold-only in this pass. The page is ready for the real auth flow.
+        The backend now supports bootstrap admin login with an HTTP-only session cookie.
       </div>
     </Card>
   );
