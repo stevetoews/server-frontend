@@ -77,6 +77,31 @@ export interface HealthCheckRecord {
   summary: string;
 }
 
+export interface IncidentRecord {
+  checkType?: string;
+  id: string;
+  openedAt: string;
+  resolvedAt?: string;
+  serverId: string;
+  severity: "warning" | "critical";
+  status: "open" | "remediation_pending" | "resolved";
+  summary?: string;
+  title: string;
+}
+
+export interface RemediationRunRecord {
+  actionType: string;
+  commandText?: string;
+  finishedAt?: string;
+  id: string;
+  incidentId: string;
+  outputSnippet?: string;
+  provider: string;
+  serverId: string;
+  startedAt: string;
+  status: "running" | "succeeded" | "failed";
+}
+
 export interface DashboardSnapshot {
   activeServers: number;
   incidentsOpen: number;
@@ -299,5 +324,86 @@ export async function runServerChecks(serverId: string) {
 
   return payload as ApiEnvelope<{
     checks: HealthCheckRecord[];
+  }>;
+}
+
+export async function getServerIncidents(serverId: string) {
+  const env = getClientEnv();
+  const response = await fetch(`${env.NEXT_PUBLIC_API_BASE_URL}/servers/${serverId}/incidents`, {
+    cache: "no-store",
+    credentials: "include",
+  });
+
+  const payload = await response.json();
+
+  if (!response.ok) {
+    throw new Error(payload?.error?.message ?? "Unable to load server incidents");
+  }
+
+  return payload as ApiEnvelope<{
+    incidents: IncidentRecord[];
+  }>;
+}
+
+export async function getIncidents() {
+  const env = getClientEnv();
+  const response = await fetch(`${env.NEXT_PUBLIC_API_BASE_URL}/incidents`, {
+    cache: "no-store",
+  });
+
+  const payload = await response.json();
+
+  if (!response.ok) {
+    throw new Error(payload?.error?.message ?? "Unable to load incidents");
+  }
+
+  return payload as ApiEnvelope<{
+    incidents: IncidentRecord[];
+  }>;
+}
+
+export async function getServerRemediations(serverId: string) {
+  const env = getClientEnv();
+  const response = await fetch(`${env.NEXT_PUBLIC_API_BASE_URL}/servers/${serverId}/remediations`, {
+    cache: "no-store",
+    credentials: "include",
+  });
+
+  const payload = await response.json();
+
+  if (!response.ok) {
+    throw new Error(payload?.error?.message ?? "Unable to load remediation runs");
+  }
+
+  return payload as ApiEnvelope<{
+    runs: RemediationRunRecord[];
+  }>;
+}
+
+export async function remediateIncident(input: {
+  actionType: string;
+  incidentId: string;
+}) {
+  const env = getClientEnv();
+  const response = await fetch(`${env.NEXT_PUBLIC_API_BASE_URL}/incidents/${input.incidentId}/remediate`, {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      actionType: input.actionType,
+    }),
+  });
+
+  const payload = await response.json();
+
+  if (!response.ok) {
+    throw new Error(payload?.error?.message ?? "Unable to remediate incident");
+  }
+
+  return payload as ApiEnvelope<{
+    incidents: IncidentRecord[];
+    runs: RemediationRunRecord[];
   }>;
 }

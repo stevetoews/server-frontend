@@ -1,11 +1,15 @@
 import { Activity, AlertTriangle, ServerCog, ShieldCheck } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
-import { getDashboardSnapshot } from "@/lib/api";
+import { getDashboardSnapshot, type IncidentRecord } from "@/lib/api";
 
 const snapshot = getDashboardSnapshot();
 
-export function DashboardShell() {
+interface DashboardShellProps {
+  incidents: IncidentRecord[];
+}
+
+export function DashboardShell({ incidents }: DashboardShellProps) {
   const stats = [
     {
       label: "Active Servers",
@@ -59,14 +63,14 @@ export function DashboardShell() {
         <Card className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold text-foreground">Recent incidents</h2>
-            <span className="text-sm text-muted-foreground">3 unresolved</span>
+            <span className="text-sm text-muted-foreground">
+              {incidents.filter((incident) => incident.status !== "resolved").length} unresolved
+            </span>
           </div>
           <div className="space-y-3">
-            {[
-              "Disk usage above 85% on wp-prod-1",
-              "PHP-FPM restart executed on blog-edge-02",
-              "SSH onboarding awaiting provider confirmation",
-            ].map((item) => (
+            {(incidents.length > 0
+              ? incidents.slice(0, 3).map((incident) => `${incident.title} (${incident.status})`)
+              : ["No incidents recorded yet"]).map((item) => (
               <div
                 className="rounded-2xl border border-border/80 bg-white/80 px-4 py-3 text-sm text-foreground"
                 key={item}

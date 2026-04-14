@@ -8,10 +8,15 @@ import { Card } from "@/components/ui/card";
 import {
   activateServer,
   getServerChecks,
+  getServerIncidents,
+  getServerRemediations,
   getSpinupwpCandidates,
   mapSpinupwpServer,
+  remediateIncident,
   runServerChecks,
   type HealthCheckRecord,
+  type IncidentRecord,
+  type RemediationRunRecord,
   type ServerRecord,
   type SpinupwpServerCandidate,
 } from "@/lib/api";
@@ -30,6 +35,8 @@ export function ServerDetailView({ server }: ServerDetailViewProps) {
     server.spinupwpServerId ?? "",
   );
   const [checks, setChecks] = useState<HealthCheckRecord[]>([]);
+  const [incidents, setIncidents] = useState<IncidentRecord[]>([]);
+  const [runs, setRuns] = useState<RemediationRunRecord[]>([]);
 
   function handleConfirmProviderMatch() {
     if (!server.providerMatch) {
@@ -136,11 +143,51 @@ export function ServerDetailView({ server }: ServerDetailViewProps) {
         const payload = await runServerChecks(server.id);
         setChecks(payload.data.checks);
         setStatusMessage("Deterministic checks ran successfully for this server.");
+
+        const incidentsPayload = await getServerIncidents(server.id);
+        setIncidents(incidentsPayload.data.incidents);
       } catch (checkError) {
         setError(
           checkError instanceof Error
             ? checkError.message
             : "Unable to run deterministic checks",
+        );
+      }
+    });
+  }
+
+  function handleLoadRemediations() {
+    setError(null);
+    setStatusMessage(null);
+
+    startTransition(async () => {
+      try {
+        const payload = await getServerRemediations(server.id);
+        setRuns(payload.data.runs);
+      } catch (runError) {
+        setError(
+          runError instanceof Error ? runError.message : "Unable to load remediation runs",
+        );
+      }
+    });
+  }
+
+  function handleRemediateIncident(incidentId: string, actionType: string) {
+    setError(null);
+    setStatusMessage(null);
+
+    startTransition(async () => {
+      try {
+        const payload = await remediateIncident({
+          incidentId,
+          actionType,
+        });
+        setIncidents(payload.data.incidents);
+        setRuns(payload.data.runs);
+        setStatusMessage(`Executed allowlisted remediation: ${actionType}`);
+      } catch (runError) {
+        setError(
+          runError instanceof Error ? runError.message : "Unable to execute remediation",
         );
       }
     });
@@ -324,6 +371,102 @@ export function ServerDetailView({ server }: ServerDetailViewProps) {
                     <div className="text-muted-foreground">{check.summary}</div>
                     <div className="mt-1 text-xs text-muted-foreground">
                       {check.status} • {new Date(check.createdAt).toLocaleString()}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          <div className="border-t border-border pt-3">
+            <div className="flex flex-wrap gap-2">
+              <Button disabled={isPending} onClick={async () => {
+                setError(null);
+                setStatusMessage(null);
+
+                startTransition(async () => {
+                  try {
+                    const payload = await getServerIncidents(server.id);
+                    setIncidents(payload.data.incidents);
+                  } catch (incidentError) {
+                    setError(
+                      incidentError instanceof Error
+                        ? incidentError.message
+                        : "Unable to load incidents",
+                    );
+                  }
+                });
+              }} type="button" variant="secondary">
+                Load Incidents
+              </Button>
+            </div>
+
+            <div className="mt-4 space-y-2">
+              {incidents.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No incidents loaded yet.
+                </p>
+              ) : (
+                incidents.map((incident) => (
+                  <div className="rounded-2xl border border-border bg-white/80 p-3 text-sm text-foreground" key={incident.id}>
+                    <div className="font-medium">{incident.title}</div>
+                    <div className="text-muted-foreground">
+                      {incident.summary ?? "No summary"}
+                    </div>
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      {incident.severity} • {incident.status} • {new Date(incident.openedAt).toLocaleString()}
+                    </div>
+                    {incident.status === "open" ? (
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {incident.checkType === "host.uptime" ? (
+                          <>
+                            <Button disabled={isPending} onClick={() => handleRemediateIncident(incident.id, "restart.nginx")} type="button" variant="secondary">
+                              Restart Nginx
+                            </Button>
+                            <Button disabled={isPending} onClick={() => handleRemediateIncident(incident.id, "provider.reboot")} type="button">
+                              Reboot Provider
+                            </Button>
+                          </>
+                        ) : null}
+                        {incident.checkType === "host.disk.root" ? (
+                          <Button disabled={isPending} onClick={() => handleRemediateIncident(incident.id, "wordpress.cache.flush")} type="button" variant="secondary">
+                            Flush WP Cache
+                          </Button>
+                        ) : null}
+                      </div>
+                    ) : null}
+                    {incident.status === "remediation_pending" ? (
+                      <div className="mt-3 text-xs text-amber-700">
+                        Remediation completed. Waiting for a healthy follow-up check before resolution.
+                      </div>
+                    ) : null}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          <div className="border-t border-border pt-3">
+            <div className="flex flex-wrap gap-2">
+              <Button disabled={isPending} onClick={handleLoadRemediations} type="button" variant="secondary">
+                Load Remediation Runs
+              </Button>
+            </div>
+
+            <div className="mt-4 space-y-2">
+              {runs.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No remediation runs loaded yet.
+                </p>
+              ) : (
+                runs.map((run) => (
+                  <div className="rounded-2xl border border-border bg-white/80 p-3 text-sm text-foreground" key={run.id}>
+                    <div className="font-medium">{run.actionType}</div>
+                    <div className="text-muted-foreground">
+                      {run.outputSnippet ?? run.commandText ?? "No output"}
+                    </div>
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      {run.provider} • {run.status} • {new Date(run.startedAt).toLocaleString()}
                     </div>
                   </div>
                 ))
