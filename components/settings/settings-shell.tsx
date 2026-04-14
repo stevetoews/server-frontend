@@ -1,0 +1,32 @@
+import { Card } from "@/components/ui/card";
+
+export function SettingsShell() {
+  return (
+    <div className="space-y-6">
+      <div className="space-y-2">
+        <p className="text-xs font-semibold uppercase tracking-[0.35em] text-muted-foreground">
+          Settings
+        </p>
+        <h1 className="text-3xl font-semibold tracking-tight text-foreground">
+          Integrations and policy controls
+        </h1>
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-2">
+        <Card className="space-y-3">
+          <h2 className="text-lg font-semibold text-foreground">Integrations</h2>
+          <p className="text-sm text-muted-foreground">
+            Configure Turso, Linode, DigitalOcean, and SpinupWP credentials without exposing plaintext secrets in logs or UI payloads.
+          </p>
+        </Card>
+
+        <Card className="space-y-3">
+          <h2 className="text-lg font-semibold text-foreground">Policies</h2>
+          <p className="text-sm text-muted-foreground">
+            Restrict remediation to approved restarts, WordPress maintenance commands, and provider reboot actions.
+          </p>
+        </Card>
+      </div>
+    </div>
+  );
+}
