@@ -5,6 +5,36 @@ export interface ApiEnvelope<TData> {
   ok: boolean;
 }
 
+interface ApiErrorPayload {
+  error?: {
+    details?: {
+      fieldErrors?: Record<string, string[] | undefined>;
+      formErrors?: string[];
+    };
+    message?: string;
+  };
+}
+
+function readApiErrorMessage(payload: ApiErrorPayload, fallback: string) {
+  const fieldErrors = payload.error?.details?.fieldErrors;
+
+  if (fieldErrors) {
+    for (const messages of Object.values(fieldErrors)) {
+      if (messages && messages.length > 0) {
+        return messages[0];
+      }
+    }
+  }
+
+  const formError = payload.error?.details?.formErrors?.[0];
+
+  if (formError) {
+    return formError;
+  }
+
+  return payload.error?.message ?? fallback;
+}
+
 export interface AuthUser {
   createdAt: string;
   email: string;
@@ -322,7 +352,7 @@ export async function createServer(input: {
   const payload = await response.json();
 
   if (!response.ok) {
-    throw new Error(payload?.error?.message ?? "Unable to create server");
+    throw new Error(readApiErrorMessage(payload, "Unable to create server"));
   }
 
   return payload as ApiEnvelope<{

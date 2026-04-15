@@ -129,7 +129,7 @@ export function AddServerWizard() {
                 <input
                   className="h-12 rounded-2xl border border-border bg-white px-4 text-sm"
                   onChange={(event) => setHostname(event.target.value)}
-                  placeholder="host.example.com"
+                  placeholder="Optional if public IP is provided"
                   value={hostname}
                 />
               </label>
