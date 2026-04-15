@@ -49,6 +49,26 @@ interface ServerDetailViewProps {
 
 type ActivityKindFilter = "all" | "audit" | "incident" | "remediation";
 
+function getActivitySourceHref(entry: ServerActivityItem) {
+  if (entry.kind === "incident") {
+    return `#incident-${entry.payload.id}`;
+  }
+
+  if (entry.kind === "remediation") {
+    return `#remediation-${entry.payload.id}`;
+  }
+
+  if (entry.payload.targetType === "incident" && entry.payload.targetId) {
+    return `#incident-${entry.payload.targetId}`;
+  }
+
+  if (entry.payload.targetType === "server") {
+    return "#onboarding-state";
+  }
+
+  return "#activity-feed";
+}
+
 export function ServerDetailView({
   initialActivityEventType,
   initialActivityKindFilter,
@@ -574,7 +594,10 @@ export function ServerDetailView({
                 </p>
               ) : (
                 checks.map((check) => (
-                  <div className="rounded-2xl border border-border bg-white/80 p-3 text-sm text-foreground" key={check.id}>
+                  <div
+                    className="rounded-2xl border border-border bg-white/80 p-3 text-sm text-foreground"
+                    key={check.id}
+                  >
                     <div className="font-medium">{check.checkType}</div>
                     <div className="text-muted-foreground">{check.summary}</div>
                     <div className="mt-1 text-xs text-muted-foreground">
@@ -648,13 +671,28 @@ export function ServerDetailView({
                 </p>
               ) : (
                 incidents.map((incident) => (
-                  <div className="rounded-2xl border border-border bg-white/80 p-3 text-sm text-foreground" key={incident.id}>
-                    <div className="font-medium">{incident.title}</div>
-                    <div className="text-muted-foreground">
-                      {incident.summary ?? "No summary"}
-                    </div>
-                    <div className="mt-1 text-xs text-muted-foreground">
-                      {incident.severity} • {incident.status} • {new Date(incident.openedAt).toLocaleString()}
+                  <div
+                    className="rounded-2xl border border-border bg-white/80 p-3 text-sm text-foreground"
+                    key={incident.id}
+                    id={`incident-${incident.id}`}
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="space-y-1">
+                        <div className="font-medium">{incident.title}</div>
+                        <div className="text-muted-foreground">
+                          {incident.summary ?? "No summary"}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {incident.severity} • {incident.status} •{" "}
+                          {new Date(incident.openedAt).toLocaleString()}
+                        </div>
+                      </div>
+                      <a
+                        className="rounded-full border border-border px-3 py-1 text-[11px] uppercase tracking-[0.22em] text-muted-foreground transition hover:border-primary/40 hover:text-foreground"
+                        href={`#activity-incident:${incident.id}`}
+                      >
+                        Source
+                      </a>
                     </div>
                     {incident.status === "open" ? (
                       <div className="mt-3 flex flex-wrap gap-2">
@@ -744,13 +782,27 @@ export function ServerDetailView({
                 </p>
               ) : (
                 runs.map((run) => (
-                  <div className="rounded-2xl border border-border bg-white/80 p-3 text-sm text-foreground" key={run.id}>
-                    <div className="font-medium">{run.actionType}</div>
-                    <div className="text-muted-foreground">
-                      {run.outputSnippet ?? run.commandText ?? "No output"}
-                    </div>
-                    <div className="mt-1 text-xs text-muted-foreground">
-                      {run.provider} • {run.status} • {new Date(run.startedAt).toLocaleString()}
+                  <div
+                    className="rounded-2xl border border-border bg-white/80 p-3 text-sm text-foreground"
+                    id={`remediation-${run.id}`}
+                    key={run.id}
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="space-y-1">
+                        <div className="font-medium">{run.actionType}</div>
+                        <div className="text-muted-foreground">
+                          {run.outputSnippet ?? run.commandText ?? "No output"}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {run.provider} • {run.status} • {new Date(run.startedAt).toLocaleString()}
+                        </div>
+                      </div>
+                      <a
+                        className="rounded-full border border-border px-3 py-1 text-[11px] uppercase tracking-[0.22em] text-muted-foreground transition hover:border-primary/40 hover:text-foreground"
+                        href={`#activity-remediation:${run.id}`}
+                      >
+                        Source
+                      </a>
                     </div>
                   </div>
                 ))
@@ -869,8 +921,10 @@ export function ServerDetailView({
                 </p>
               ) : (
                 activity.map((entry) => (
-                  <div
-                    className="rounded-2xl border border-border bg-white/80 p-3 text-sm text-foreground"
+                  <a
+                    className="block rounded-2xl border border-border bg-white/80 p-3 text-sm text-foreground transition hover:border-primary/40 hover:bg-white"
+                    href={getActivitySourceHref(entry)}
+                    id={`activity-${entry.id}`}
                     key={entry.id}
                   >
                     <div className="flex flex-wrap items-start justify-between gap-3">
@@ -892,14 +946,19 @@ export function ServerDetailView({
                                 "Remediation run"}
                         </div>
                       </div>
-                      <span className="rounded-full border border-border px-2 py-0.5 text-[11px] uppercase tracking-[0.24em] text-muted-foreground">
-                        {entry.kind}
-                      </span>
+                      <div className="flex flex-col items-end gap-2">
+                        <span className="rounded-full border border-border px-2 py-0.5 text-[11px] uppercase tracking-[0.24em] text-muted-foreground">
+                          {entry.kind}
+                        </span>
+                        <span className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
+                          Open source
+                        </span>
+                      </div>
                     </div>
                     <div className="mt-2 text-xs text-muted-foreground">
                       {new Date(entry.createdAt).toLocaleString()}
                     </div>
-                  </div>
+                  </a>
                 ))
               )}
             </div>
