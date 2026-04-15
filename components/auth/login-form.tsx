@@ -43,7 +43,7 @@ export function LoginForm() {
           Sign in to the maintenance console
         </h1>
         <p className="text-sm text-muted-foreground">
-          Use your admin credentials to review incidents, provider matches, and SSH onboarding.
+          Use your admin credentials to manage WordOps servers, incidents, and SSH onboarding.
         </p>
       </div>
 

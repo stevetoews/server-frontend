@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { type FormEvent, useEffect, useState, useTransition } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
@@ -13,22 +13,28 @@ import {
   getToneClasses,
 } from "@/lib/server-health";
 import {
-  activateServer,
+  createServerWordopsSite,
+  deleteServerWordopsSite,
+  disableServerWordopsSite,
+  enableServerWordopsSite,
   getServerActivity,
   getServerChecks,
   getServerIncidents,
   getServerRemediations,
-  getSpinupwpCandidates,
-  mapSpinupwpServer,
+  getServerWordops,
+  installServerWordopsStack,
   remediateIncident,
   runServerChecks,
+  syncServerWordopsSites,
   type HealthCheckRecord,
   type IncidentRecord,
   type PaginationMeta,
   type RemediationRunRecord,
   type ServerRecord,
-  type SpinupwpServerCandidate,
   type ServerActivityItem,
+  type WordopsOverview,
+  type WordopsSiteRecord,
+  type WordopsCreateSiteInput,
 } from "@/lib/api";
 
 const DETAIL_PAGE_SIZE = 5;
@@ -40,6 +46,7 @@ const ACTIVITY_KIND_OPTIONS = [
 ] as const;
 const SECTION_LINKS = [
   { href: "#server-information", label: "Server Info" },
+  { href: "#wordops", label: "WordOps" },
   { href: "#recent-checks", label: "Checks" },
   { href: "#server-incidents", label: "Incidents" },
   { href: "#remediation-runs", label: "Remediations" },
@@ -53,6 +60,8 @@ interface ServerDetailViewProps {
   initialActivityPagination: PaginationMeta | null;
   initialIncidents: IncidentRecord[];
   initialIncidentsPagination: PaginationMeta | null;
+  initialSites: WordopsSiteRecord[];
+  initialWordops: WordopsOverview;
   server: ServerRecord;
 }
 
@@ -97,6 +106,8 @@ export function ServerDetailView({
   initialActivityPagination,
   initialIncidents,
   initialIncidentsPagination,
+  initialSites,
+  initialWordops,
   server,
 }: ServerDetailViewProps) {
   const router = useRouter();
@@ -104,10 +115,13 @@ export function ServerDetailView({
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
-  const [spinupwpCandidates, setSpinupwpCandidates] = useState<SpinupwpServerCandidate[]>([]);
-  const [selectedSpinupwpServerId, setSelectedSpinupwpServerId] = useState<string>(
-    server.spinupwpServerId ?? "",
-  );
+  const [wordops, setWordops] = useState<WordopsOverview>(initialWordops);
+  const [sites, setSites] = useState<WordopsSiteRecord[]>(initialSites);
+  const [siteForm, setSiteForm] = useState<WordopsCreateSiteInput>({
+    cacheProfile: "wp",
+    domain: "",
+    letsEncrypt: true,
+  });
   const [checks, setChecks] = useState<HealthCheckRecord[]>([]);
   const [checksPagination, setChecksPagination] = useState<PaginationMeta | null>(null);
   const [checksOffset, setChecksOffset] = useState(0);
@@ -135,80 +149,131 @@ export function ServerDetailView({
       : "DigitalOcean"
     : "Unmatched";
   const serverHealth = getServerHealthSummary(server, incidents);
+  const displayedSites = sites.length > 0 ? sites : wordops.sites;
+  const wordopsTone =
+    wordops.status === "ready"
+      ? "good"
+      : wordops.status === "missing" || wordops.status === "degraded"
+        ? "warn"
+        : "danger";
+  const wordopsReady = wordops.status === "ready";
 
-  function handleConfirmProviderMatch() {
-    if (!server.providerMatch) {
-      return;
-    }
-
+  function handleRefreshWordops() {
     setError(null);
     setStatusMessage(null);
 
     startTransition(async () => {
       try {
-        const payload = await activateServer({
-          serverId: server.id,
-          providerInstanceId: server.providerMatch!.providerInstanceId,
-          providerKind: server.providerMatch!.providerKind,
-        });
-
-        setStatusMessage(payload.data.nextStep);
-        router.refresh();
-      } catch (activationError) {
+        const payload = await getServerWordops(server.id);
+        setWordops(payload.data.overview);
+        setStatusMessage("WordOps status refreshed from the live server.");
+      } catch (wordopsError) {
         setError(
-          activationError instanceof Error
-            ? activationError.message
-            : "Unable to confirm provider match",
+          wordopsError instanceof Error
+            ? wordopsError.message
+            : "Unable to load WordOps status",
         );
       }
     });
   }
 
-  function handleLoadSpinupwpCandidates() {
+  function handleSyncWordopsSites() {
     setError(null);
     setStatusMessage(null);
 
     startTransition(async () => {
       try {
-        const payload = await getSpinupwpCandidates(server.id);
-        setSpinupwpCandidates(payload.data.candidates);
-
-        if (!selectedSpinupwpServerId && payload.data.candidates[0]) {
-          setSelectedSpinupwpServerId(payload.data.candidates[0].spinupwpServerId);
-        }
-      } catch (candidateError) {
+        const payload = await syncServerWordopsSites(server.id);
+        setWordops(payload.data.overview);
+        setSites(payload.data.sites);
+        setStatusMessage(`Synced ${payload.data.sites.length} WordOps site(s).`);
+      } catch (syncError) {
         setError(
-          candidateError instanceof Error
-            ? candidateError.message
-            : "Unable to load SpinupWP candidates",
+          syncError instanceof Error
+            ? syncError.message
+            : "Unable to sync WordOps sites",
         );
       }
     });
   }
 
-  function handleMapSpinupwpServer() {
-    if (!selectedSpinupwpServerId) {
-      setError("Select a SpinupWP server before mapping.");
-      return;
-    }
-
+  function handleInstallWordopsStack() {
     setError(null);
     setStatusMessage(null);
 
     startTransition(async () => {
       try {
-        const payload = await mapSpinupwpServer({
-          serverId: server.id,
-          spinupwpServerId: selectedSpinupwpServerId,
+        const payload = await installServerWordopsStack(server.id, {
+          profile: "web",
         });
-
-        setStatusMessage(payload.data.nextStep);
-        router.refresh();
-      } catch (mappingError) {
+        setWordops(payload.data.overview);
+        setSites(payload.data.sites);
+        setStatusMessage("WordOps web stack installed and synced.");
+      } catch (stackError) {
         setError(
-          mappingError instanceof Error
-            ? mappingError.message
-            : "Unable to map SpinupWP server",
+          stackError instanceof Error
+            ? stackError.message
+            : "Unable to install the WordOps web stack",
+        );
+      }
+    });
+  }
+
+  function handleCreateWordopsSite(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError(null);
+    setStatusMessage(null);
+
+    startTransition(async () => {
+      try {
+        const payload = await createServerWordopsSite(server.id, {
+          ...siteForm,
+          domain: siteForm.domain.trim(),
+          ...(siteForm.adminEmail?.trim() ? { adminEmail: siteForm.adminEmail.trim() } : {}),
+          ...(siteForm.adminPassword?.trim()
+            ? { adminPassword: siteForm.adminPassword.trim() }
+            : {}),
+          ...(siteForm.adminUser?.trim() ? { adminUser: siteForm.adminUser.trim() } : {}),
+        });
+        setWordops(payload.data.overview);
+        setSites(payload.data.sites);
+        setSiteForm({
+          cacheProfile: "wp",
+          domain: "",
+          letsEncrypt: true,
+        });
+        setStatusMessage(`Created WordOps site ${payload.data.sites[payload.data.sites.length - 1]?.domain ?? siteForm.domain}.`);
+      } catch (siteError) {
+        setError(
+          siteError instanceof Error ? siteError.message : "Unable to create WordOps site",
+        );
+      }
+    });
+  }
+
+  function handleMutateWordopsSite(domain: string, action: "enable" | "disable" | "delete") {
+    setError(null);
+    setStatusMessage(null);
+
+    startTransition(async () => {
+      try {
+        const payload =
+          action === "enable"
+            ? await enableServerWordopsSite(server.id, domain)
+            : action === "disable"
+              ? await disableServerWordopsSite(server.id, domain)
+              : await deleteServerWordopsSite(server.id, domain);
+
+        setWordops(payload.data.overview);
+        setSites(payload.data.sites);
+        setStatusMessage(
+          `${action === "delete" ? "Deleted" : action === "enable" ? "Enabled" : "Disabled"} ${domain}.`,
+        );
+      } catch (siteError) {
+        setError(
+          siteError instanceof Error
+            ? siteError.message
+            : `Unable to ${action} WordOps site`,
         );
       }
     });
@@ -369,7 +434,7 @@ export function ServerDetailView({
         setChecks(payload.data.checks);
         setChecksPagination(null);
         setChecksOffset(0);
-        setStatusMessage("Deterministic checks ran successfully for this server.");
+        setStatusMessage("Health checks ran successfully for this server.");
 
         const incidentsPayload = await getServerIncidents(server.id, {
           limit: DETAIL_PAGE_SIZE,
@@ -382,7 +447,7 @@ export function ServerDetailView({
         setError(
           checkError instanceof Error
             ? checkError.message
-            : "Unable to run deterministic checks",
+            : "Unable to run health checks",
         );
       }
     });
@@ -408,13 +473,6 @@ export function ServerDetailView({
       }
     });
   }
-
-  const canConfirmProvider =
-    Boolean(server.providerMatch) &&
-    server.onboardingStatus !== "active" &&
-    server.onboardingStatus !== "provider_matched";
-  const canLoadSpinupwp = server.onboardingStatus === "active";
-  const canMapSpinupwp = canLoadSpinupwp && Boolean(selectedSpinupwpServerId);
 
   useEffect(() => {
     loadChecks(0);
@@ -503,19 +561,21 @@ export function ServerDetailView({
         </Card>
       ) : null}
 
-      <Card id="onboarding-state" className="space-y-2 p-4 md:p-5">
+      <Card id="wordops" className="space-y-3 p-4 md:p-5">
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div>
             <div className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
-              Onboarding
+              WordOps
             </div>
-            <h2 className="mt-1 text-base font-semibold text-foreground">Provider activation</h2>
+            <h2 className="mt-1 text-base font-semibold text-foreground">WordOps runtime</h2>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              Compact gate for provider confirmation and SpinupWP mapping.
+              Live `wo` status plus the site inventory synced into this dashboard.
             </p>
           </div>
-          <div className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
-            {server.spinupwpServerId ? "Mapped" : "Not mapped"}
+          <div
+            className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${getToneClasses(wordopsTone)}`}
+          >
+            {wordops.status}
           </div>
         </div>
 
@@ -531,79 +591,268 @@ export function ServerDetailView({
           </div>
         ) : null}
 
-        <div className="grid gap-2 md:grid-cols-2">
+        <div className="grid gap-2 md:grid-cols-3">
           <div className="rounded-xl border border-border bg-white/75 p-3 text-sm text-foreground">
             <div className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
-              Gate
+              CLI
             </div>
             <div className="mt-1.5">
-              {server.providerMatch
-                ? `${providerLabel} ${Math.round(server.providerMatch.confidence * 100)}%`
-                : "Awaiting provider confirmation"}
+              {wordops.installed ? "Installed" : "Missing"}
             </div>
             <div className="mt-1 text-muted-foreground">
-              {server.providerMatch
-                ? server.providerMatch.providerInstanceId
-                : "Activation stays blocked until the provider is confirmed."}
+              {wordops.installed
+                ? wordops.version
+                  ? `WordOps ${wordops.version}`
+                  : "Command detected on the live server"
+                : "The `wo` command was not found on this server."}
             </div>
           </div>
           <div className="rounded-xl border border-border bg-white/75 p-3 text-sm text-foreground">
             <div className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
-              SpinupWP
+              Live Sites
             </div>
             <div className="mt-1.5">
-              {server.spinupwpServerId
-                ? `Mapped to ${server.spinupwpServerId}`
-                : "Not mapped yet"}
+              {wordops.sites.length}
             </div>
             <div className="mt-1 text-muted-foreground">
-              This unlocks only after the primary provider is confirmed and the server is active.
+              Parsed from `wo site list`
+            </div>
+          </div>
+          <div className="rounded-xl border border-border bg-white/75 p-3 text-sm text-foreground">
+            <div className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
+              Synced Sites
+            </div>
+            <div className="mt-1.5">
+              {sites.length}
+            </div>
+            <div className="mt-1 text-muted-foreground">
+              Stored locally for dashboard views
             </div>
           </div>
         </div>
 
         <div className="flex flex-wrap gap-2">
-          <Button
-            disabled={!canConfirmProvider || isPending}
-            onClick={handleConfirmProviderMatch}
-            type="button"
-          >
-            {isPending ? "Confirming..." : "Confirm Provider Match"}
+          <Button disabled={isPending} onClick={handleRefreshWordops} type="button" variant="secondary">
+            Refresh WordOps
           </Button>
-          <Button
-            disabled={!canLoadSpinupwp || isPending}
-            onClick={handleLoadSpinupwpCandidates}
-            type="button"
-            variant="secondary"
-          >
-            Load SpinupWP Servers
+          <Button disabled={isPending || !wordops.installed || wordopsReady} onClick={handleInstallWordopsStack} type="button">
+            Install Web Stack
+          </Button>
+          <Button disabled={isPending || !wordopsReady} onClick={handleSyncWordopsSites} type="button">
+            Sync Sites
           </Button>
         </div>
 
-        {spinupwpCandidates.length > 0 ? (
-          <div className="space-y-2 border-t border-border pt-3">
-            <select
-              className="h-11 w-full rounded-xl border border-border bg-white px-3 text-sm"
-              onChange={(event) => setSelectedSpinupwpServerId(event.target.value)}
-              value={selectedSpinupwpServerId}
-            >
-              <option value="" disabled>
-                Select a SpinupWP server
-              </option>
-              {spinupwpCandidates.map((candidate) => (
-                <option key={candidate.spinupwpServerId} value={candidate.spinupwpServerId}>
-                  {candidate.label} ({candidate.siteCount} sites)
-                </option>
-              ))}
-            </select>
+        <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+          <div className="rounded-xl border border-border bg-white/75 p-3 text-sm text-foreground">
+            <div className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">Nginx</div>
+            <div className="mt-1.5">{wordops.stack.nginxInstalled ? "Installed" : "Missing"}</div>
+          </div>
+          <div className="rounded-xl border border-border bg-white/75 p-3 text-sm text-foreground">
+            <div className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">PHP</div>
+            <div className="mt-1.5">{wordops.stack.phpInstalled ? "Installed" : "Missing"}</div>
+          </div>
+          <div className="rounded-xl border border-border bg-white/75 p-3 text-sm text-foreground">
+            <div className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">SQL</div>
+            <div className="mt-1.5">{wordops.stack.mysqlInstalled ? "Installed" : "Missing"}</div>
+          </div>
+          <div className="rounded-xl border border-border bg-white/75 p-3 text-sm text-foreground">
+            <div className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">WP-CLI</div>
+            <div className="mt-1.5">{wordops.stack.wpCliInstalled ? "Installed" : "Missing"}</div>
+          </div>
+        </div>
 
-            <Button
-              disabled={!canMapSpinupwp || isPending}
-              onClick={handleMapSpinupwpServer}
-              type="button"
-            >
-              Map SpinupWP Server
+        <form className="space-y-3 rounded-xl border border-border bg-white/75 p-3" onSubmit={handleCreateWordopsSite}>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <div className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
+                New WordPress Site
+              </div>
+              <div className="mt-0.5 text-xs text-muted-foreground">
+                WordOps-first creation flow for a new managed site.
+              </div>
+            </div>
+            <Button disabled={isPending || !wordopsReady} type="submit">
+              Create Site
             </Button>
+          </div>
+
+          <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+            <label className="space-y-1">
+              <span className="text-[11px] font-medium text-foreground">Domain</span>
+              <input
+                className="h-11 w-full rounded-xl border border-border bg-white px-3 text-sm"
+                onChange={(event) => setSiteForm((current) => ({ ...current, domain: event.target.value }))}
+                placeholder="example.com"
+                value={siteForm.domain}
+              />
+            </label>
+            <label className="space-y-1">
+              <span className="text-[11px] font-medium text-foreground">Cache Profile</span>
+              <select
+                className="h-11 w-full rounded-xl border border-border bg-white px-3 text-sm"
+                onChange={(event) =>
+                  setSiteForm((current) => ({
+                    ...current,
+                    cacheProfile: event.target.value as WordopsCreateSiteInput["cacheProfile"],
+                  }))
+                }
+                value={siteForm.cacheProfile}
+              >
+                <option value="wp">WordPress</option>
+                <option value="wpfc">FastCGI cache</option>
+                <option value="wpredis">Redis cache</option>
+                <option value="wpsc">WP Super Cache</option>
+                <option value="wprocket">WP Rocket</option>
+                <option value="wpce">Cache Enabler</option>
+              </select>
+            </label>
+            <label className="space-y-1">
+              <span className="text-[11px] font-medium text-foreground">PHP</span>
+              <select
+                className="h-11 w-full rounded-xl border border-border bg-white px-3 text-sm"
+                onChange={(event) =>
+                  setSiteForm((current) => ({
+                    ...current,
+                    phpVersion:
+                      event.target.value === ""
+                        ? undefined
+                        : (event.target.value as "8.2" | "8.3"),
+                  }))
+                }
+                value={siteForm.phpVersion ?? ""}
+              >
+                <option value="">Default</option>
+                <option value="8.2">PHP 8.2</option>
+                <option value="8.3">PHP 8.3</option>
+              </select>
+            </label>
+            <label className="space-y-1">
+              <span className="text-[11px] font-medium text-foreground">Admin User</span>
+              <input
+                className="h-11 w-full rounded-xl border border-border bg-white px-3 text-sm"
+                onChange={(event) => setSiteForm((current) => ({ ...current, adminUser: event.target.value }))}
+                placeholder="admin"
+                value={siteForm.adminUser ?? ""}
+              />
+            </label>
+            <label className="space-y-1">
+              <span className="text-[11px] font-medium text-foreground">Admin Email</span>
+              <input
+                className="h-11 w-full rounded-xl border border-border bg-white px-3 text-sm"
+                onChange={(event) => setSiteForm((current) => ({ ...current, adminEmail: event.target.value }))}
+                placeholder="admin@example.com"
+                value={siteForm.adminEmail ?? ""}
+              />
+            </label>
+            <label className="space-y-1">
+              <span className="text-[11px] font-medium text-foreground">Admin Password</span>
+              <input
+                className="h-11 w-full rounded-xl border border-border bg-white px-3 text-sm"
+                onChange={(event) => setSiteForm((current) => ({ ...current, adminPassword: event.target.value }))}
+                placeholder="Optional"
+                type="password"
+                value={siteForm.adminPassword ?? ""}
+              />
+            </label>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
+            <label className="inline-flex items-center gap-2">
+              <input
+                checked={siteForm.letsEncrypt ?? false}
+                onChange={(event) =>
+                  setSiteForm((current) => ({
+                    ...current,
+                    letsEncrypt: event.target.checked,
+                    ...(event.target.checked ? {} : { hsts: false }),
+                  }))
+                }
+                type="checkbox"
+              />
+              Let's Encrypt
+            </label>
+            <label className="inline-flex items-center gap-2">
+              <input
+                checked={siteForm.hsts ?? false}
+                disabled={!(siteForm.letsEncrypt ?? false)}
+                onChange={(event) => setSiteForm((current) => ({ ...current, hsts: event.target.checked }))}
+                type="checkbox"
+              />
+              HSTS
+            </label>
+            <label className="inline-flex items-center gap-2">
+              <input
+                checked={siteForm.vhostOnly ?? false}
+                onChange={(event) => setSiteForm((current) => ({ ...current, vhostOnly: event.target.checked }))}
+                type="checkbox"
+              />
+              Vhost only
+            </label>
+          </div>
+        </form>
+
+        {displayedSites.length > 0 ? (
+          <div className="space-y-2 border-t border-border pt-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
+                Sites
+              </div>
+              <div className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
+                {sites.length > 0 ? "Synced inventory" : "Live discovery"}
+              </div>
+            </div>
+            <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+              {displayedSites.map((site) => (
+                <div className="rounded-xl border border-border bg-white/75 p-3 text-sm text-foreground" key={`${site.domain}:${site.sitePath}`}>
+                  <div className="font-medium">{site.domain}</div>
+                  <div className="mt-1 text-xs text-muted-foreground">{site.sitePath}</div>
+                  <div className="mt-2 flex flex-wrap gap-1.5 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                    <span className="rounded-full border border-border px-2 py-0.5">{site.appType}</span>
+                    {site.cacheType ? (
+                      <span className="rounded-full border border-border px-2 py-0.5">{site.cacheType}</span>
+                    ) : null}
+                    {site.phpVersion ? (
+                      <span className="rounded-full border border-border px-2 py-0.5">PHP {site.phpVersion}</span>
+                    ) : null}
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <Button
+                      disabled={isPending || !wordopsReady}
+                      onClick={() => handleMutateWordopsSite(site.domain, "enable")}
+                      type="button"
+                      variant="secondary"
+                    >
+                      Enable
+                    </Button>
+                    <Button
+                      disabled={isPending || !wordopsReady}
+                      onClick={() => handleMutateWordopsSite(site.domain, "disable")}
+                      type="button"
+                      variant="secondary"
+                    >
+                      Disable
+                    </Button>
+                    <Button
+                      disabled={isPending || !wordopsReady}
+                      onClick={() => handleMutateWordopsSite(site.domain, "delete")}
+                      type="button"
+                      variant="ghost"
+                    >
+                      Delete
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
+        {wordops.infoOutput ? (
+          <div className="rounded-xl border border-border bg-slate-950 px-3 py-3 text-xs text-slate-100">
+            <pre className="overflow-x-auto whitespace-pre-wrap font-mono">
+              {wordops.infoOutput}
+            </pre>
           </div>
         ) : null}
       </Card>
@@ -635,7 +884,7 @@ export function ServerDetailView({
             >
               Refresh
             </Button>
-            <Button disabled={isPending || !server.spinupwpServerId} onClick={handleRunChecks} type="button">
+            <Button disabled={isPending} onClick={handleRunChecks} type="button">
               Run Checks Now
             </Button>
           </div>

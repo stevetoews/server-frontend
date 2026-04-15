@@ -79,12 +79,11 @@ export interface ServerRecord {
   ipAddress?: string;
   name: string;
   notes?: string;
-  onboardingStatus: "draft" | "ssh_verified" | "discovered" | "provider_matched" | "active";
+  onboardingStatus: "draft" | "ssh_verified" | "discovered" | "active";
   osName?: string;
   osVersion?: string;
   providerMatch?: ProviderMatch;
   providerSnapshot?: LinodeSnapshot;
-  spinupwpServerId?: string;
   sshAuthMode: "password" | "private_key" | "passwordless_agent";
   sshPort: number;
   sshUsername: string;
@@ -112,15 +111,52 @@ export interface OnboardingSnapshot {
   };
 }
 
-export interface ActivationDecision {
-  action: "allow" | "deny";
-  reasons: string[];
+export interface WordopsSiteRecord {
+  appType: string;
+  cacheType?: string;
+  createdAt?: string;
+  domain: string;
+  id?: string;
+  phpVersion?: string;
+  serverId?: string;
+  sitePath: string;
+  updatedAt?: string;
 }
 
-export interface SpinupwpServerCandidate {
-  label: string;
-  siteCount: number;
-  spinupwpServerId: string;
+export interface WordopsOverview {
+  infoOutput?: string;
+  installed: boolean;
+  siteListOutput?: string;
+  sites: WordopsSiteRecord[];
+  stack: {
+    mysqlInstalled: boolean;
+    nginxInstalled: boolean;
+    phpInstalled: boolean;
+    wpCliInstalled: boolean;
+  };
+  status: "ready" | "missing" | "degraded" | "error";
+  version?: string;
+}
+
+export interface WordopsCreateSiteInput {
+  adminEmail?: string;
+  adminPassword?: string;
+  adminUser?: string;
+  cacheProfile: "wp" | "wpfc" | "wpredis" | "wpsc" | "wprocket" | "wpce";
+  domain: string;
+  hsts?: boolean;
+  letsEncrypt?: boolean;
+  phpVersion?: "8.2" | "8.3";
+  vhostOnly?: boolean;
+}
+
+export interface WordopsMutationResult {
+  output: string;
+  status: "succeeded" | "failed";
+}
+
+export interface WordopsStackInstallInput {
+  profile: "web";
 }
 
 export interface HealthCheckRecord {
@@ -394,46 +430,13 @@ export async function getServer(id: string, options?: { cookie?: string }) {
   return payload as ApiEnvelope<{ server: ServerRecord }>;
 }
 
-export async function activateServer(input: {
-  providerInstanceId: string;
-  providerKind: "linode" | "digitalocean";
-  serverId: string;
-}) {
+export async function getServerWordops(serverId: string, options?: { cookie?: string }) {
   const env = getClientEnv();
   const response = await fetch(
-    `${env.NEXT_PUBLIC_API_BASE_URL}/servers/${input.serverId}/activate`,
-    {
-      method: "POST",
-      credentials: "include",
-      headers: {
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
-        providerInstanceId: input.providerInstanceId,
-        providerKind: input.providerKind,
-      }),
-    },
-  );
-
-  const payload = await response.json();
-
-  if (!response.ok) {
-    throw new Error(payload?.error?.message ?? "Unable to activate server");
-  }
-
-  return payload as ApiEnvelope<{
-    activation: ActivationDecision;
-    nextStep: string;
-    server: ServerRecord;
-  }>;
-}
-
-export async function getSpinupwpCandidates(serverId: string) {
-  const env = getClientEnv();
-  const response = await fetch(
-    `${env.NEXT_PUBLIC_API_BASE_URL}/servers/${serverId}/spinupwp-candidates`,
+    `${env.NEXT_PUBLIC_API_BASE_URL}/servers/${serverId}/wordops`,
     {
       cache: "no-store",
+      headers: options?.cookie ? { cookie: options.cookie } : undefined,
       credentials: "include",
     },
   );
@@ -441,44 +444,145 @@ export async function getSpinupwpCandidates(serverId: string) {
   const payload = await response.json();
 
   if (!response.ok) {
-    throw new Error(payload?.error?.message ?? "Unable to load SpinupWP candidates");
+    throw new Error(payload?.error?.message ?? "Unable to load WordOps status");
   }
 
   return payload as ApiEnvelope<{
-    candidates: SpinupwpServerCandidate[];
+    overview: WordopsOverview;
     server: ServerRecord;
   }>;
 }
 
-export async function mapSpinupwpServer(input: {
-  serverId: string;
-  spinupwpServerId: string;
-}) {
+export async function syncServerWordopsSites(serverId: string) {
   const env = getClientEnv();
   const response = await fetch(
-    `${env.NEXT_PUBLIC_API_BASE_URL}/servers/${input.serverId}/spinupwp-map`,
+    `${env.NEXT_PUBLIC_API_BASE_URL}/servers/${serverId}/wordops/sync`,
+    {
+      method: "POST",
+      credentials: "include",
+    },
+  );
+
+  const payload = await response.json();
+
+  if (!response.ok) {
+    throw new Error(payload?.error?.message ?? "Unable to sync WordOps sites");
+  }
+
+  return payload as ApiEnvelope<{
+    overview: WordopsOverview;
+    sites: WordopsSiteRecord[];
+    server: ServerRecord;
+  }>;
+}
+
+export async function getServerSites(serverId: string, options?: { cookie?: string }) {
+  const env = getClientEnv();
+  const response = await fetch(`${env.NEXT_PUBLIC_API_BASE_URL}/servers/${serverId}/sites`, {
+    cache: "no-store",
+    headers: options?.cookie ? { cookie: options.cookie } : undefined,
+    credentials: "include",
+  });
+
+  const payload = await response.json();
+
+  if (!response.ok) {
+    throw new Error(payload?.error?.message ?? "Unable to load synced sites");
+  }
+
+  return payload as ApiEnvelope<{
+    server: ServerRecord;
+    sites: WordopsSiteRecord[];
+  }>;
+}
+
+export async function createServerWordopsSite(serverId: string, input: WordopsCreateSiteInput) {
+  const env = getClientEnv();
+  const response = await fetch(`${env.NEXT_PUBLIC_API_BASE_URL}/servers/${serverId}/sites`, {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      "content-type": "application/json",
+    },
+    body: JSON.stringify(input),
+  });
+
+  const payload = await response.json();
+
+  if (!response.ok) {
+    throw new Error(readApiErrorMessage(payload, "Unable to create WordOps site"));
+  }
+
+  return payload as ApiEnvelope<{
+    execution: WordopsMutationResult;
+    overview: WordopsOverview;
+    server: ServerRecord;
+    sites: WordopsSiteRecord[];
+  }>;
+}
+
+export async function installServerWordopsStack(serverId: string, input: WordopsStackInstallInput) {
+  const env = getClientEnv();
+  const response = await fetch(
+    `${env.NEXT_PUBLIC_API_BASE_URL}/servers/${serverId}/wordops/stack/install`,
     {
       method: "POST",
       credentials: "include",
       headers: {
         "content-type": "application/json",
       },
-      body: JSON.stringify({
-        spinupwpServerId: input.spinupwpServerId,
-      }),
+      body: JSON.stringify(input),
     },
   );
 
   const payload = await response.json();
 
   if (!response.ok) {
-    throw new Error(payload?.error?.message ?? "Unable to map SpinupWP server");
+    throw new Error(readApiErrorMessage(payload, "Unable to install WordOps web stack"));
   }
 
   return payload as ApiEnvelope<{
-    nextStep: string;
+    execution: WordopsMutationResult;
+    overview: WordopsOverview;
     server: ServerRecord;
+    sites: WordopsSiteRecord[];
   }>;
+}
+
+async function mutateServerWordopsSite(serverId: string, domain: string, action: "enable" | "disable" | "delete") {
+  const env = getClientEnv();
+  const response = await fetch(
+    `${env.NEXT_PUBLIC_API_BASE_URL}/servers/${serverId}/sites/${encodeURIComponent(domain)}/${action}`,
+    {
+      method: "POST",
+      credentials: "include",
+    },
+  );
+
+  const payload = await response.json();
+
+  if (!response.ok) {
+    throw new Error(readApiErrorMessage(payload, `Unable to ${action} WordOps site`));
+  }
+
+  return payload as ApiEnvelope<{
+    execution: WordopsMutationResult;
+    overview: WordopsOverview;
+    server: ServerRecord;
+    sites: WordopsSiteRecord[];
+  }>;
+}
+
+export function enableServerWordopsSite(serverId: string, domain: string) {
+  return mutateServerWordopsSite(serverId, domain, "enable");
+}
+
+export function disableServerWordopsSite(serverId: string, domain: string) {
+  return mutateServerWordopsSite(serverId, domain, "disable");
+}
+
+export function deleteServerWordopsSite(serverId: string, domain: string) {
+  return mutateServerWordopsSite(serverId, domain, "delete");
 }
 
 export async function getServerChecks(serverId: string, options?: ListOptions & { cookie?: string }) {

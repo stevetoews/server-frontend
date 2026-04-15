@@ -17,14 +17,14 @@ export function SettingsShell() {
         <Card className="space-y-3">
           <h2 className="text-lg font-semibold text-foreground">Integrations</h2>
           <p className="text-sm text-muted-foreground">
-            Configure Turso, Linode, DigitalOcean, and SpinupWP credentials without exposing plaintext secrets in logs or UI payloads.
+            Configure Turso, Akamai, DigitalOcean, and notification delivery without exposing plaintext secrets in logs or UI payloads.
           </p>
         </Card>
 
         <Card className="space-y-3">
           <h2 className="text-lg font-semibold text-foreground">Policies</h2>
           <p className="text-sm text-muted-foreground">
-            Restrict remediation to approved restarts, WordPress maintenance commands, and provider reboot actions.
+            Restrict remediation to approved service restarts and last-resort provider reboot actions.
           </p>
         </Card>
       </div>

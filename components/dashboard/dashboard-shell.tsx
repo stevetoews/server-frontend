@@ -101,9 +101,9 @@ export function DashboardShell({ incidents, servers }: DashboardShellProps) {
         <Card className="space-y-4">
           <h2 className="text-lg font-semibold text-foreground">System posture</h2>
           <ul className="space-y-3 text-sm text-muted-foreground">
-            <li>SSH and WP-CLI actions stay inside explicit allowlists.</li>
-            <li>Linode or DigitalOcean matching is required before activation.</li>
-            <li>SpinupWP mapping unlocks only after primary provider confirmation.</li>
+            <li>SSH and WordOps actions stay inside explicit allowlists.</li>
+            <li>Provider metadata from Akamai or DigitalOcean stays read-only context.</li>
+            <li>Servers activate immediately after live SSH verification and host discovery.</li>
           </ul>
         </Card>
       </div>

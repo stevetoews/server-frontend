@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { ServerDetailView } from "@/components/servers/server-detail-view";
-import { getServer, getServerActivity, getServerIncidents } from "@/lib/api";
+import { getServer, getServerActivity, getServerIncidents, getServerSites, getServerWordops } from "@/lib/api";
 
 interface ServerDetailPageProps {
   params: Promise<{ id: string }>;
@@ -46,18 +46,44 @@ export default async function ServerDetailPage({ params, searchParams }: ServerD
   }
 
   const server = payload.data.server;
-  const incidentsPayload = await getServerIncidents(id, {
-    limit: 3,
-    offset: 0,
-    cookie: cookieStore.toString(),
-  });
-  const activityPayload = await getServerActivity(id, {
-    limit: 5,
-    offset: 0,
-    ...(activityKind !== "all" ? { kind: activityKind } : {}),
-    ...(activityEventType ? { eventType: activityEventType } : {}),
-    cookie: cookieStore.toString(),
-  });
+  const [incidentsPayload, activityPayload, wordopsResult, sitesResult] = await Promise.all([
+    getServerIncidents(id, {
+      limit: 3,
+      offset: 0,
+      cookie: cookieStore.toString(),
+    }),
+    getServerActivity(id, {
+      limit: 5,
+      offset: 0,
+      ...(activityKind !== "all" ? { kind: activityKind } : {}),
+      ...(activityEventType ? { eventType: activityEventType } : {}),
+      cookie: cookieStore.toString(),
+    }),
+    getServerWordops(id, {
+      cookie: cookieStore.toString(),
+    }).catch(() => ({
+      data: {
+        overview: {
+          installed: false,
+          sites: [],
+          stack: {
+            mysqlInstalled: false,
+            nginxInstalled: false,
+            phpInstalled: false,
+            wpCliInstalled: false,
+          },
+          status: "error" as const,
+        },
+      },
+    })),
+    getServerSites(id, {
+      cookie: cookieStore.toString(),
+    }).catch(() => ({
+      data: {
+        sites: [],
+      },
+    })),
+  ]);
 
   return (
     <ServerDetailView
@@ -67,6 +93,8 @@ export default async function ServerDetailPage({ params, searchParams }: ServerD
       initialActivityPagination={activityPayload.data.pagination ?? null}
       initialIncidents={incidentsPayload.data.incidents}
       initialIncidentsPagination={incidentsPayload.data.pagination ?? null}
+      initialSites={sitesResult.data.sites}
+      initialWordops={wordopsResult.data.overview}
       server={server}
     />
   );

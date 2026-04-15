@@ -17,9 +17,9 @@ Next.js 15+ admin UI scaffold for the internal server maintenance platform.
 
 - Auth starts with a dedicated login page
 - Add Server flow is SSH-first
-- Provider match to Linode or DigitalOcean is a required onboarding gate
-- SpinupWP mapping appears after provider confirmation
-- UI language reflects deterministic checks, incidents, and audit logging as first-class concepts
+- Provider metadata from Akamai or DigitalOcean is read-only operational context
+- WordOps inspection and health checks are first-class concepts in the UI
+- UI language reflects incidents, remediations, and audit logging as first-class concepts
 
 ## Routes
 

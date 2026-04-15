@@ -11,7 +11,7 @@ const steps = [
   "Create server record",
   "Test SSH",
   "Discover host metadata",
-  "Confirm provider match",
+  "Detect provider metadata",
   "Activate monitoring",
 ] as const;
 
@@ -79,7 +79,7 @@ export function AddServerWizard() {
                 <p className="text-sm font-medium text-foreground">{step}</p>
                 <p className="text-xs text-muted-foreground">
                   {index === 3
-                    ? "Activation remains blocked until Linode or DigitalOcean is confirmed."
+                    ? "Akamai or DigitalOcean inventory is read-only context after discovery."
                     : "This step is now driven by the backend onboarding API."}
                 </p>
               </div>
@@ -95,7 +95,7 @@ export function AddServerWizard() {
               Add the first live server
             </h1>
             <p className="text-sm text-muted-foreground">
-              Store the server, test the SSH connection immediately, discover the host, then confirm the provider before monitoring starts.
+              Store the server, test SSH immediately, discover the host, detect provider metadata, then activate monitoring right away.
             </p>
           </div>
 
