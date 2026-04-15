@@ -44,6 +44,8 @@ interface ServerDetailViewProps {
   initialActivityKindFilter: ActivityKindFilter;
   initialActivity: ServerActivityItem[];
   initialActivityPagination: PaginationMeta | null;
+  initialIncidents: IncidentRecord[];
+  initialIncidentsPagination: PaginationMeta | null;
   server: ServerRecord;
 }
 
@@ -86,6 +88,8 @@ export function ServerDetailView({
   initialActivityKindFilter,
   initialActivity,
   initialActivityPagination,
+  initialIncidents,
+  initialIncidentsPagination,
   server,
 }: ServerDetailViewProps) {
   const router = useRouter();
@@ -100,8 +104,9 @@ export function ServerDetailView({
   const [checks, setChecks] = useState<HealthCheckRecord[]>([]);
   const [checksPagination, setChecksPagination] = useState<PaginationMeta | null>(null);
   const [checksOffset, setChecksOffset] = useState(0);
-  const [incidents, setIncidents] = useState<IncidentRecord[]>([]);
-  const [incidentsPagination, setIncidentsPagination] = useState<PaginationMeta | null>(null);
+  const [incidents, setIncidents] = useState<IncidentRecord[]>(initialIncidents);
+  const [incidentsPagination, setIncidentsPagination] =
+    useState<PaginationMeta | null>(initialIncidentsPagination);
   const [incidentsOffset, setIncidentsOffset] = useState(0);
   const [runs, setRuns] = useState<RemediationRunRecord[]>([]);
   const [runsPagination, setRunsPagination] = useState<PaginationMeta | null>(null);
@@ -117,6 +122,7 @@ export function ServerDetailView({
   const [appliedActivityEventType, setAppliedActivityEventType] =
     useState(initialActivityEventType);
   const [activityOffset, setActivityOffset] = useState(0);
+  const latestActiveIncident = incidents.find((incident) => incident.status !== "resolved");
 
   function handleConfirmProviderMatch() {
     if (!server.providerMatch) {
@@ -429,6 +435,50 @@ export function ServerDetailView({
             {link.label}
           </a>
         ))}
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-4">
+        <Card className="space-y-2">
+          <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Open</div>
+          <div className="text-2xl font-semibold text-foreground">
+            {incidents.filter((incident) => incident.status === "open").length}
+          </div>
+          <p className="text-sm text-muted-foreground">Incidents ready for remediation.</p>
+        </Card>
+        <Card className="space-y-2">
+          <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">
+            Remediation Pending
+          </div>
+          <div className="text-2xl font-semibold text-foreground">
+            {incidents.filter((incident) => incident.status === "remediation_pending").length}
+          </div>
+          <p className="text-sm text-muted-foreground">Waiting on follow-up checks.</p>
+        </Card>
+        <Card className="space-y-2">
+          <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Resolved</div>
+          <div className="text-2xl font-semibold text-foreground">
+            {incidents.filter((incident) => incident.status === "resolved").length}
+          </div>
+          <p className="text-sm text-muted-foreground">Closed records for this server.</p>
+        </Card>
+        <Card className="space-y-2">
+          <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">
+            Latest Active
+          </div>
+          {latestActiveIncident ? (
+            <a
+              className="text-lg font-semibold text-foreground transition hover:text-primary"
+              href={`/incidents/${latestActiveIncident.id}`}
+            >
+              {latestActiveIncident.title}
+            </a>
+          ) : (
+            <div className="text-lg font-semibold text-foreground">None</div>
+          )}
+          <p className="text-sm text-muted-foreground">
+            {incidentsPagination ? `Loaded ${incidentsPagination.returned} recent records.` : "Recent server incident context."}
+          </p>
+        </Card>
       </div>
 
       <div className="grid gap-4 xl:grid-cols-3">

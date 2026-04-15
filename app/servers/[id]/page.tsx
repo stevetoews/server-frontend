@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { ServerDetailView } from "@/components/servers/server-detail-view";
-import { getServer, getServerActivity } from "@/lib/api";
+import { getServer, getServerActivity, getServerIncidents } from "@/lib/api";
 
 interface ServerDetailPageProps {
   params: Promise<{ id: string }>;
@@ -46,6 +46,11 @@ export default async function ServerDetailPage({ params, searchParams }: ServerD
   }
 
   const server = payload.data.server;
+  const incidentsPayload = await getServerIncidents(id, {
+    limit: 3,
+    offset: 0,
+    cookie: cookieStore.toString(),
+  });
   const activityPayload = await getServerActivity(id, {
     limit: 5,
     offset: 0,
@@ -60,6 +65,8 @@ export default async function ServerDetailPage({ params, searchParams }: ServerD
       initialActivityKindFilter={activityKind}
       initialActivity={activityPayload.data.items}
       initialActivityPagination={activityPayload.data.pagination ?? null}
+      initialIncidents={incidentsPayload.data.incidents}
+      initialIncidentsPagination={incidentsPayload.data.pagination ?? null}
       server={server}
     />
   );
