@@ -69,6 +69,18 @@ function getActivitySourceHref(entry: ServerActivityItem) {
   return "#activity-feed";
 }
 
+function getActiveIncidentHref(incidents: IncidentRecord[], checkType?: string) {
+  if (!checkType) {
+    return null;
+  }
+
+  const activeIncident = incidents.find(
+    (incident) => incident.checkType === checkType && incident.status !== "resolved",
+  );
+
+  return activeIncident ? `/incidents/${activeIncident.id}` : null;
+}
+
 export function ServerDetailView({
   initialActivityEventType,
   initialActivityKindFilter,
@@ -594,16 +606,49 @@ export function ServerDetailView({
                 </p>
               ) : (
                 checks.map((check) => (
-                  <div
-                    className="rounded-2xl border border-border bg-white/80 p-3 text-sm text-foreground"
-                    key={check.id}
-                  >
-                    <div className="font-medium">{check.checkType}</div>
-                    <div className="text-muted-foreground">{check.summary}</div>
-                    <div className="mt-1 text-xs text-muted-foreground">
-                      {check.status} • {new Date(check.createdAt).toLocaleString()}
-                    </div>
-                  </div>
+                  (() => {
+                    const incidentHref = getActiveIncidentHref(incidents, check.checkType);
+
+                    const content = (
+                      <>
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div className="space-y-1">
+                            <div className="font-medium">{check.checkType}</div>
+                            <div className="text-muted-foreground">{check.summary}</div>
+                          </div>
+                          {incidentHref ? (
+                            <span className="rounded-full border border-border px-2 py-0.5 text-[11px] uppercase tracking-[0.24em] text-muted-foreground">
+                              Active incident
+                            </span>
+                          ) : null}
+                        </div>
+                        <div className="mt-1 text-xs text-muted-foreground">
+                          {check.status} • {new Date(check.createdAt).toLocaleString()}
+                        </div>
+                      </>
+                    );
+
+                    if (incidentHref) {
+                      return (
+                        <a
+                          className="block rounded-2xl border border-border bg-white/80 p-3 text-sm text-foreground transition hover:border-primary/40 hover:bg-white"
+                          href={incidentHref}
+                          key={check.id}
+                        >
+                          {content}
+                        </a>
+                      );
+                    }
+
+                    return (
+                      <div
+                        className="rounded-2xl border border-border bg-white/80 p-3 text-sm text-foreground"
+                        key={check.id}
+                      >
+                        {content}
+                      </div>
+                    );
+                  })()
                 ))
               )}
             </div>
