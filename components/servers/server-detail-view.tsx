@@ -157,6 +157,14 @@ export function ServerDetailView({
         ? "warn"
         : "danger";
   const wordopsReady = wordops.status === "ready";
+  const wordopsStatusLabel =
+    wordops.status === "missing"
+      ? "Not Found"
+      : wordops.status === "degraded"
+        ? "Stack Incomplete"
+        : wordops.status === "ready"
+          ? "Ready"
+          : "Error";
 
   function handleRefreshWordops() {
     setError(null);
@@ -575,7 +583,7 @@ export function ServerDetailView({
           <div
             className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${getToneClasses(wordopsTone)}`}
           >
-            {wordops.status}
+            {wordopsStatusLabel}
           </div>
         </div>
 
@@ -588,6 +596,33 @@ export function ServerDetailView({
         {error ? (
           <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
             {error}
+          </div>
+        ) : null}
+
+        {wordops.status === "missing" ? (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-800">
+            <div className="font-medium">WordOps CLI was not detected on this server.</div>
+            <div className="mt-1 text-amber-700">
+              Install WordOps on the server, then click <span className="font-medium">Refresh WordOps</span>.
+            </div>
+          </div>
+        ) : null}
+
+        {wordops.status === "degraded" ? (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-800">
+            <div className="font-medium">WordOps is installed, but the web stack is not ready yet.</div>
+            <div className="mt-1 text-amber-700">
+              Use <span className="font-medium">Install Web Stack</span> to provision Nginx, PHP, and SQL before creating sites.
+            </div>
+          </div>
+        ) : null}
+
+        {wordops.status === "ready" ? (
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-3 text-sm text-emerald-800">
+            <div className="font-medium">WordOps is ready for site management.</div>
+            <div className="mt-1 text-emerald-700">
+              Sync sites or create the first WordPress site from this card.
+            </div>
           </div>
         ) : null}
 
@@ -635,7 +670,11 @@ export function ServerDetailView({
           <Button disabled={isPending} onClick={handleRefreshWordops} type="button" variant="secondary">
             Refresh WordOps
           </Button>
-          <Button disabled={isPending || !wordops.installed || wordopsReady} onClick={handleInstallWordopsStack} type="button">
+          <Button
+            disabled={isPending || !wordops.installed || wordopsReady}
+            onClick={handleInstallWordopsStack}
+            type="button"
+          >
             Install Web Stack
           </Button>
           <Button disabled={isPending || !wordopsReady} onClick={handleSyncWordopsSites} type="button">
