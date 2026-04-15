@@ -51,15 +51,15 @@ type ActivityKindFilter = "all" | "audit" | "incident" | "remediation";
 
 function getActivitySourceHref(entry: ServerActivityItem) {
   if (entry.kind === "incident") {
-    return `#incident-${entry.payload.id}`;
+    return `/incidents/${entry.payload.id}`;
   }
 
   if (entry.kind === "remediation") {
-    return `#remediation-${entry.payload.id}`;
+    return `/incidents/${entry.payload.incidentId}#remediation-${entry.payload.id}`;
   }
 
   if (entry.payload.targetType === "incident" && entry.payload.targetId) {
-    return `#incident-${entry.payload.targetId}`;
+    return `/incidents/${entry.payload.targetId}`;
   }
 
   if (entry.payload.targetType === "server") {
@@ -689,7 +689,7 @@ export function ServerDetailView({
                       </div>
                       <a
                         className="rounded-full border border-border px-3 py-1 text-[11px] uppercase tracking-[0.22em] text-muted-foreground transition hover:border-primary/40 hover:text-foreground"
-                        href={`#activity-incident:${incident.id}`}
+                        href={`/incidents/${incident.id}`}
                       >
                         Source
                       </a>
@@ -799,7 +799,7 @@ export function ServerDetailView({
                       </div>
                       <a
                         className="rounded-full border border-border px-3 py-1 text-[11px] uppercase tracking-[0.22em] text-muted-foreground transition hover:border-primary/40 hover:text-foreground"
-                        href={`#activity-remediation:${run.id}`}
+                        href={`/incidents/${run.incidentId}#remediation-${run.id}`}
                       >
                         Source
                       </a>

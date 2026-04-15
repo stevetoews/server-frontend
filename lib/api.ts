@@ -104,6 +104,17 @@ export interface IncidentRecord {
   title: string;
 }
 
+export interface AuditLogRecord {
+  actorId?: string;
+  actorType: "system" | "user";
+  createdAt: string;
+  eventType: string;
+  id: string;
+  metadata?: Record<string, unknown>;
+  targetId: string;
+  targetType: string;
+}
+
 export interface RemediationRunRecord {
   actionType: string;
   commandText?: string;
@@ -756,5 +767,27 @@ export async function remediateIncident(input: {
   return payload as ApiEnvelope<{
     incidents: IncidentRecord[];
     runs: RemediationRunRecord[];
+  }>;
+}
+
+export async function getIncident(incidentId: string, options?: { cookie?: string }) {
+  const env = getClientEnv();
+  const response = await fetch(`${env.NEXT_PUBLIC_API_BASE_URL}/incidents/${incidentId}`, {
+    cache: "no-store",
+    headers: options?.cookie ? { cookie: options.cookie } : undefined,
+    credentials: "include",
+  });
+
+  const payload = await response.json();
+
+  if (!response.ok) {
+    throw new Error(payload?.error?.message ?? "Unable to load incident");
+  }
+
+  return payload as ApiEnvelope<{
+    audits: AuditLogRecord[];
+    incident: IncidentRecord;
+    remediations: RemediationRunRecord[];
+    server: ServerRecord;
   }>;
 }

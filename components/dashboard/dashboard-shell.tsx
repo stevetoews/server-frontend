@@ -1,4 +1,5 @@
 import { Activity, AlertTriangle, ServerCog, ShieldCheck } from "lucide-react";
+import Link from "next/link";
 
 import { Card } from "@/components/ui/card";
 import { getDashboardSnapshot, type IncidentRecord } from "@/lib/api";
@@ -68,16 +69,24 @@ export function DashboardShell({ incidents }: DashboardShellProps) {
             </span>
           </div>
           <div className="space-y-3">
-            {(incidents.length > 0
-              ? incidents.slice(0, 3).map((incident) => `${incident.title} (${incident.status})`)
-              : ["No incidents recorded yet"]).map((item) => (
-              <div
-                className="rounded-2xl border border-border/80 bg-white/80 px-4 py-3 text-sm text-foreground"
-                key={item}
-              >
-                {item}
+            {incidents.length > 0 ? (
+              incidents.slice(0, 3).map((incident) => (
+                <Link
+                  className="block rounded-2xl border border-border/80 bg-white/80 px-4 py-3 text-sm text-foreground transition hover:border-primary/40 hover:bg-white"
+                  href={`/incidents/${incident.id}`}
+                  key={incident.id}
+                >
+                  <div className="font-medium">{incident.title}</div>
+                  <div className="mt-1 text-xs uppercase tracking-[0.22em] text-muted-foreground">
+                    {incident.severity} • {incident.status}
+                  </div>
+                </Link>
+              ))
+            ) : (
+              <div className="rounded-2xl border border-border/80 bg-white/80 px-4 py-3 text-sm text-foreground">
+                No incidents recorded yet.
               </div>
-            ))}
+            )}
           </div>
         </Card>
 
