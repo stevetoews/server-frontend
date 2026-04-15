@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { ServerDetailView } from "@/components/servers/server-detail-view";
-import { getServer } from "@/lib/api";
+import { getServer, getServerActivity } from "@/lib/api";
 
 interface ServerDetailPageProps {
   params: Promise<{ id: string }>;
@@ -26,6 +26,16 @@ export default async function ServerDetailPage({ params }: ServerDetailPageProps
   }
 
   const server = payload.data.server;
+  const activityPayload = await getServerActivity(id, {
+    limit: 5,
+    offset: 0,
+  });
 
-  return <ServerDetailView server={server} />;
+  return (
+    <ServerDetailView
+      initialActivity={activityPayload.data.items}
+      initialActivityPagination={activityPayload.data.pagination ?? null}
+      server={server}
+    />
+  );
 }

@@ -34,10 +34,16 @@ const SECTION_LINKS = [
 ] as const;
 
 interface ServerDetailViewProps {
+  initialActivity: ServerActivityItem[];
+  initialActivityPagination: PaginationMeta | null;
   server: ServerRecord;
 }
 
-export function ServerDetailView({ server }: ServerDetailViewProps) {
+export function ServerDetailView({
+  initialActivity,
+  initialActivityPagination,
+  server,
+}: ServerDetailViewProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -55,8 +61,9 @@ export function ServerDetailView({ server }: ServerDetailViewProps) {
   const [runs, setRuns] = useState<RemediationRunRecord[]>([]);
   const [runsPagination, setRunsPagination] = useState<PaginationMeta | null>(null);
   const [runsOffset, setRunsOffset] = useState(0);
-  const [activity, setActivity] = useState<ServerActivityItem[]>([]);
-  const [activityPagination, setActivityPagination] = useState<PaginationMeta | null>(null);
+  const [activity, setActivity] = useState<ServerActivityItem[]>(initialActivity);
+  const [activityPagination, setActivityPagination] =
+    useState<PaginationMeta | null>(initialActivityPagination);
   const [activityOffset, setActivityOffset] = useState(0);
 
   function handleConfirmProviderMatch() {
