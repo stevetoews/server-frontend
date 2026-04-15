@@ -35,6 +35,7 @@ import {
   type WordopsOverview,
   type WordopsSiteRecord,
   type WordopsCreateSiteInput,
+  type WordopsMutationResult,
 } from "@/lib/api";
 
 const DETAIL_PAGE_SIZE = 5;
@@ -66,6 +67,64 @@ interface ServerDetailViewProps {
 }
 
 type ActivityKindFilter = "all" | "audit" | "incident" | "remediation";
+
+interface WordopsTerminalState {
+  commandText: string;
+  output: string;
+  status: "running" | "succeeded" | "failed";
+  title: string;
+}
+
+function buildCreateSiteCommand(input: WordopsCreateSiteInput) {
+  const parts = ["wo", "site", "create", input.domain.trim(), `--${input.cacheProfile}`];
+
+  if (input.letsEncrypt) {
+    parts.push("--letsencrypt");
+  }
+
+  if (input.hsts) {
+    parts.push("--hsts");
+  }
+
+  if (input.vhostOnly) {
+    parts.push("--vhostonly");
+  }
+
+  if (input.phpVersion === "8.2") {
+    parts.push("--php82");
+  }
+
+  if (input.phpVersion === "8.3") {
+    parts.push("--php83");
+  }
+
+  if (input.adminUser?.trim()) {
+    parts.push(`--user=${input.adminUser.trim()}`);
+  }
+
+  if (input.adminPassword?.trim()) {
+    parts.push("--pass=********");
+  }
+
+  if (input.adminEmail?.trim()) {
+    parts.push(`--email=${input.adminEmail.trim()}`);
+  }
+
+  return parts.join(" ");
+}
+
+function applyTerminalResult(
+  setTerminal: (value: WordopsTerminalState) => void,
+  title: string,
+  execution: WordopsMutationResult,
+) {
+  setTerminal({
+    title,
+    commandText: execution.commandText,
+    output: execution.output,
+    status: execution.status,
+  });
+}
 
 function getActivitySourceHref(entry: ServerActivityItem) {
   if (entry.kind === "incident") {
@@ -117,6 +176,7 @@ export function ServerDetailView({
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [wordops, setWordops] = useState<WordopsOverview>(initialWordops);
   const [sites, setSites] = useState<WordopsSiteRecord[]>(initialSites);
+  const [terminal, setTerminal] = useState<WordopsTerminalState | null>(null);
   const [siteForm, setSiteForm] = useState<WordopsCreateSiteInput>({
     cacheProfile: "wp",
     domain: "",
@@ -208,6 +268,12 @@ export function ServerDetailView({
   function handleInstallWordopsStack() {
     setError(null);
     setStatusMessage(null);
+    setTerminal({
+      title: "Install Web Stack",
+      commandText: "wo stack install --web",
+      output: "Executing WordOps web stack installation...",
+      status: "running",
+    });
 
     startTransition(async () => {
       try {
@@ -216,8 +282,15 @@ export function ServerDetailView({
         });
         setWordops(payload.data.overview);
         setSites(payload.data.sites);
+        applyTerminalResult(setTerminal, "Install Web Stack", payload.data.execution);
         setStatusMessage("WordOps web stack installed and synced.");
       } catch (stackError) {
+        setTerminal({
+          title: "Install Web Stack",
+          commandText: "wo stack install --web",
+          output: stackError instanceof Error ? stackError.message : "Unable to install the WordOps web stack",
+          status: "failed",
+        });
         setError(
           stackError instanceof Error
             ? stackError.message
@@ -231,6 +304,13 @@ export function ServerDetailView({
     event.preventDefault();
     setError(null);
     setStatusMessage(null);
+    const pendingCommand = buildCreateSiteCommand(siteForm);
+    setTerminal({
+      title: "Create Site",
+      commandText: pendingCommand,
+      output: "Executing WordOps site creation...",
+      status: "running",
+    });
 
     startTransition(async () => {
       try {
@@ -245,6 +325,7 @@ export function ServerDetailView({
         });
         setWordops(payload.data.overview);
         setSites(payload.data.sites);
+        applyTerminalResult(setTerminal, "Create Site", payload.data.execution);
         setSiteForm({
           cacheProfile: "wp",
           domain: "",
@@ -252,6 +333,12 @@ export function ServerDetailView({
         });
         setStatusMessage(`Created WordOps site ${payload.data.sites[payload.data.sites.length - 1]?.domain ?? siteForm.domain}.`);
       } catch (siteError) {
+        setTerminal({
+          title: "Create Site",
+          commandText: pendingCommand,
+          output: siteError instanceof Error ? siteError.message : "Unable to create WordOps site",
+          status: "failed",
+        });
         setError(
           siteError instanceof Error ? siteError.message : "Unable to create WordOps site",
         );
@@ -262,6 +349,18 @@ export function ServerDetailView({
   function handleMutateWordopsSite(domain: string, action: "enable" | "disable" | "delete") {
     setError(null);
     setStatusMessage(null);
+    const commandText =
+      action === "enable"
+        ? `wo site enable ${domain}`
+        : action === "disable"
+          ? `wo site disable ${domain}`
+          : `wo site delete ${domain} --no-prompt`;
+    setTerminal({
+      title: `${action === "delete" ? "Delete" : action === "enable" ? "Enable" : "Disable"} Site`,
+      commandText,
+      output: `Executing WordOps site ${action}...`,
+      status: "running",
+    });
 
     startTransition(async () => {
       try {
@@ -274,10 +373,24 @@ export function ServerDetailView({
 
         setWordops(payload.data.overview);
         setSites(payload.data.sites);
+        applyTerminalResult(
+          setTerminal,
+          `${action === "delete" ? "Delete" : action === "enable" ? "Enable" : "Disable"} Site`,
+          payload.data.execution,
+        );
         setStatusMessage(
           `${action === "delete" ? "Deleted" : action === "enable" ? "Enabled" : "Disabled"} ${domain}.`,
         );
       } catch (siteError) {
+        setTerminal({
+          title: `${action === "delete" ? "Delete" : action === "enable" ? "Enable" : "Disable"} Site`,
+          commandText,
+          output:
+            siteError instanceof Error
+              ? siteError.message
+              : `Unable to ${action} WordOps site`,
+          status: "failed",
+        });
         setError(
           siteError instanceof Error
             ? siteError.message
@@ -680,6 +793,36 @@ export function ServerDetailView({
           <Button disabled={isPending || !wordopsReady} onClick={handleSyncWordopsSites} type="button">
             Sync Sites
           </Button>
+        </div>
+
+        <div className="rounded-xl border border-border bg-slate-950 px-3 py-3 text-xs text-slate-100">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="font-semibold uppercase tracking-[0.2em] text-slate-300">
+              Terminal
+            </div>
+            <div
+              className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] ${
+                terminal?.status === "succeeded"
+                  ? "bg-emerald-500/15 text-emerald-200"
+                  : terminal?.status === "failed"
+                    ? "bg-rose-500/15 text-rose-200"
+                    : "bg-slate-700 text-slate-200"
+              }`}
+            >
+              {terminal?.status ?? "idle"}
+            </div>
+          </div>
+          <div className="mt-3 space-y-2">
+            <div className="text-[11px] text-slate-400">
+              {terminal?.title ?? "No WordOps command has been run from this page yet."}
+            </div>
+            <pre className="overflow-x-auto whitespace-pre-wrap rounded-lg border border-slate-800 bg-black/30 px-3 py-2 font-mono text-[12px] text-slate-100">
+              {terminal?.commandText ? `$ ${terminal.commandText}` : "$"}
+            </pre>
+            <pre className="min-h-[96px] overflow-x-auto whitespace-pre-wrap rounded-lg border border-slate-800 bg-black/30 px-3 py-2 font-mono text-[12px] text-slate-200">
+              {terminal?.output ?? "Waiting for a WordOps action..."}
+            </pre>
+          </div>
         </div>
 
         <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4">

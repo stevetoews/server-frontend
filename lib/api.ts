@@ -151,6 +151,7 @@ export interface WordopsCreateSiteInput {
 }
 
 export interface WordopsMutationResult {
+  commandText: string;
   output: string;
   status: "succeeded" | "failed";
 }
