@@ -15,6 +15,7 @@ export const metadata: Metadata = {
 
 const navigation = [
   { href: "/dashboard", label: "Dashboard" },
+  { href: "/servers", label: "Servers" },
   { href: "/servers/new", label: "Add Server" },
   { href: "/settings", label: "Settings" },
 ];

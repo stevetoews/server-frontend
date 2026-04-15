@@ -327,6 +327,23 @@ export async function createServer(input: {
   }>;
 }
 
+export async function getServers(options?: { cookie?: string }) {
+  const env = getClientEnv();
+  const response = await fetch(`${env.NEXT_PUBLIC_API_BASE_URL}/servers`, {
+    cache: "no-store",
+    headers: options?.cookie ? { cookie: options.cookie } : undefined,
+    credentials: "include",
+  });
+
+  const payload = await response.json();
+
+  if (!response.ok) {
+    throw new Error(payload?.error?.message ?? "Unable to load servers");
+  }
+
+  return payload as ApiEnvelope<ServerRecord[]>;
+}
+
 export async function getServer(id: string, options?: { cookie?: string }) {
   const env = getClientEnv();
   const response = await fetch(`${env.NEXT_PUBLIC_API_BASE_URL}/servers/${id}`, {
