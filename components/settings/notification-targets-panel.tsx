@@ -7,16 +7,21 @@ import { Card } from "@/components/ui/card";
 import {
   getNotificationTargetDeliveries,
   getNotificationTargets,
+  type PaginationMeta,
   type NotificationDeliveryRecord,
   type NotificationTargetRecord,
 } from "@/lib/api";
+
+const DELIVERY_PAGE_SIZE = 10;
 
 export function NotificationTargetsPanel() {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [targets, setTargets] = useState<NotificationTargetRecord[]>([]);
   const [selectedTargetId, setSelectedTargetId] = useState<string>("");
+  const [deliveryOffset, setDeliveryOffset] = useState(0);
   const [deliveries, setDeliveries] = useState<NotificationDeliveryRecord[]>([]);
+  const [deliveryPagination, setDeliveryPagination] = useState<PaginationMeta | null>(null);
   const [historyLabel, setHistoryLabel] = useState<string>("No target selected");
   const [isLoadingTargets, setIsLoadingTargets] = useState(true);
 
@@ -25,7 +30,7 @@ export function NotificationTargetsPanel() {
     [selectedTargetId, targets],
   );
 
-  function loadDeliveries(targetId: string) {
+  function loadDeliveries(targetId: string, offset = deliveryOffset) {
     if (!targetId) {
       return;
     }
@@ -35,8 +40,12 @@ export function NotificationTargetsPanel() {
 
     startTransition(async () => {
       try {
-        const payload = await getNotificationTargetDeliveries(targetId, { limit: 10 });
+        const payload = await getNotificationTargetDeliveries(targetId, {
+          limit: DELIVERY_PAGE_SIZE,
+          offset,
+        });
         setDeliveries(payload.data.deliveries);
+        setDeliveryPagination(payload.data.pagination ?? null);
         setHistoryLabel(
           `${payload.data.target.label} • ${payload.data.pagination?.total ?? payload.data.deliveries.length} deliveries`,
         );
@@ -60,19 +69,25 @@ export function NotificationTargetsPanel() {
         setTargets(payload.data.targets);
 
         const nextTargetId = selectedTargetId || payload.data.targets[0]?.id || "";
+        const nextTargetOffset = nextTargetId === selectedTargetId ? deliveryOffset : 0;
         setSelectedTargetId(nextTargetId);
+        setDeliveryOffset(nextTargetOffset);
 
         if (nextTargetId) {
           const nextTarget = payload.data.targets.find((target) => target.id === nextTargetId);
           setHistoryLabel(nextTarget ? `${nextTarget.label} • loading…` : "Loading delivery history...");
-          await getNotificationTargetDeliveries(nextTargetId, { limit: 10 }).then((deliveryPayload) => {
-            setDeliveries(deliveryPayload.data.deliveries);
-            setHistoryLabel(
-              `${deliveryPayload.data.target.label} • ${deliveryPayload.data.pagination?.total ?? deliveryPayload.data.deliveries.length} deliveries`,
-            );
+          const deliveryPayload = await getNotificationTargetDeliveries(nextTargetId, {
+            limit: DELIVERY_PAGE_SIZE,
+            offset: nextTargetOffset,
           });
+          setDeliveries(deliveryPayload.data.deliveries);
+          setDeliveryPagination(deliveryPayload.data.pagination ?? null);
+          setHistoryLabel(
+            `${deliveryPayload.data.target.label} • ${deliveryPayload.data.pagination?.total ?? deliveryPayload.data.deliveries.length} deliveries`,
+          );
         } else {
           setDeliveries([]);
+          setDeliveryPagination(null);
           setHistoryLabel("No notification targets found");
         }
       } catch (targetError) {
@@ -133,7 +148,8 @@ export function NotificationTargetsPanel() {
                   key={target.id}
                   onClick={() => {
                     setSelectedTargetId(target.id);
-                    loadDeliveries(target.id);
+                    setDeliveryOffset(0);
+                    loadDeliveries(target.id, 0);
                   }}
                   type="button"
                 >
@@ -170,13 +186,48 @@ export function NotificationTargetsPanel() {
 
               <Button
                 disabled={!selectedTargetId || isPending}
-                onClick={() => loadDeliveries(selectedTargetId)}
+                onClick={() => loadDeliveries(selectedTargetId, deliveryOffset)}
                 type="button"
                 variant="secondary"
               >
                 Refresh History
               </Button>
             </div>
+
+            {deliveryPagination ? (
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4 text-xs text-muted-foreground">
+                <div>
+                  Showing {deliveryPagination.offset + 1}-
+                  {deliveryPagination.offset + deliveryPagination.returned} of {deliveryPagination.total}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    disabled={isPending || deliveryOffset === 0}
+                    onClick={() => {
+                      const nextOffset = Math.max(0, deliveryOffset - DELIVERY_PAGE_SIZE);
+                      setDeliveryOffset(nextOffset);
+                      loadDeliveries(selectedTargetId, nextOffset);
+                    }}
+                    type="button"
+                    variant="secondary"
+                  >
+                    Previous
+                  </Button>
+                  <Button
+                    disabled={isPending || !deliveryPagination.hasMore}
+                    onClick={() => {
+                      const nextOffset = deliveryOffset + DELIVERY_PAGE_SIZE;
+                      setDeliveryOffset(nextOffset);
+                      loadDeliveries(selectedTargetId, nextOffset);
+                    }}
+                    type="button"
+                    variant="secondary"
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
+            ) : null}
           </div>
 
           <div className="space-y-3">
