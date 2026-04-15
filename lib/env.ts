@@ -1,8 +1,6 @@
 export function getClientEnv() {
   const isServer = typeof window === "undefined";
-  const serverApiBaseUrl = process.env.VERCEL_URL
-    ? `https://${process.env.VERCEL_URL}/api`
-    : "http://localhost:3000/api";
+  const serverApiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:4000";
 
   return {
     NEXT_PUBLIC_API_BASE_URL: isServer ? serverApiBaseUrl : "/api",
