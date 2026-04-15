@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { Card } from "@/components/ui/card";
+import { LinodeStandardInfo } from "@/components/servers/linode-standard-info";
 import { getIncidents, getServers, type ServerRecord } from "@/lib/api";
 
 type ProviderFilter = "all" | "akamai" | "digitalocean" | "unmatched";
@@ -198,9 +199,9 @@ export default async function ServersPage({ searchParams }: ServersPageProps) {
           </Card>
         </div>
 
-        <div className="grid gap-4 xl:grid-cols-2">
+        <div className="grid gap-4">
           {filteredServers.length === 0 ? (
-            <Card className="space-y-2 xl:col-span-2">
+            <Card className="space-y-2">
               <p className="text-sm text-muted-foreground">
                 No servers match the current provider filter.
               </p>
@@ -240,7 +241,9 @@ export default async function ServersPage({ searchParams }: ServersPageProps) {
                       </span>
                     </div>
 
-                    <div className="grid gap-3 sm:grid-cols-3">
+                    {server.providerSnapshot ? <LinodeStandardInfo server={server} /> : null}
+
+                    <div className="grid gap-3 md:grid-cols-3">
                       <div className="rounded-2xl border border-border/80 bg-white/80 p-3">
                         <div className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
                           Open

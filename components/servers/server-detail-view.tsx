@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { LinodeStandardInfo } from "@/components/servers/linode-standard-info";
 import {
   activateServer,
   getServerActivity,
@@ -122,7 +123,6 @@ export function ServerDetailView({
   const [appliedActivityEventType, setAppliedActivityEventType] =
     useState(initialActivityEventType);
   const [activityOffset, setActivityOffset] = useState(0);
-  const latestActiveIncident = incidents.find((incident) => incident.status !== "resolved");
   const providerLabel = server.providerMatch
     ? server.providerMatch.providerKind === "linode"
       ? "Akamai"
@@ -455,7 +455,7 @@ export function ServerDetailView({
           </div>
         </div>
 
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-3 md:grid-cols-2">
           <div className="rounded-2xl border border-border bg-white/80 p-4 text-sm text-foreground">
             <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Identity</div>
             <div className="mt-2 font-medium">{server.name}</div>
@@ -471,32 +471,6 @@ export function ServerDetailView({
             </div>
             <div className="mt-1 text-muted-foreground">Mode: {server.sshAuthMode}</div>
           </div>
-          <div className="rounded-2xl border border-border bg-white/80 p-4 text-sm text-foreground">
-            <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Provider</div>
-            <div className="mt-2">
-              {server.providerMatch ? `${providerLabel} matched` : "Awaiting provider confirmation"}
-            </div>
-            <div className="mt-1 text-muted-foreground">
-              {server.providerMatch
-                ? server.providerMatch.providerInstanceId
-                : "Activation stays blocked until the provider is confirmed."}
-            </div>
-          </div>
-          <div className="rounded-2xl border border-border bg-white/80 p-4 text-sm text-foreground">
-            <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Timeline</div>
-            <div className="mt-2 text-foreground">
-              Created {new Date(server.createdAt).toLocaleString()}
-            </div>
-            <div className="mt-1 text-muted-foreground">
-              Updated {new Date(server.updatedAt).toLocaleString()}
-            </div>
-            <div className="mt-1 text-muted-foreground">
-              Latest activity{" "}
-              {latestActiveIncident
-                ? `incident ${new Date(latestActiveIncident.openedAt).toLocaleString()}`
-                : `server update ${new Date(server.updatedAt).toLocaleString()}`}
-            </div>
-          </div>
         </div>
 
         {server.notes ? (
@@ -506,6 +480,12 @@ export function ServerDetailView({
           </div>
         ) : null}
       </Card>
+
+      {server.providerSnapshot ? (
+        <Card id="linode-standard-info" className="space-y-3">
+          <LinodeStandardInfo server={server} />
+        </Card>
+      ) : null}
 
       <Card id="onboarding-state" className="space-y-3">
         <div className="flex flex-wrap items-start justify-between gap-3">

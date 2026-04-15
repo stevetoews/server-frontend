@@ -25,6 +25,22 @@ export interface ProviderMatch {
   reasons: string[];
 }
 
+export interface LinodeSnapshot {
+  createdAt: string;
+  cpuCores: number;
+  kind: "linode";
+  linodeId: string;
+  planLabel: string;
+  publicIpv4: string[];
+  publicIpv6: string[];
+  ramGb: number;
+  region: string;
+  summary: string;
+  tags: string[];
+  totalStorageGb: number;
+  usedStoragePercent?: number;
+}
+
 export interface ServerRecord {
   createdAt: string;
   environment: "production" | "staging" | "development";
@@ -35,6 +51,7 @@ export interface ServerRecord {
   notes?: string;
   onboardingStatus: "draft" | "ssh_verified" | "discovered" | "provider_matched" | "active";
   providerMatch?: ProviderMatch;
+  providerSnapshot?: LinodeSnapshot;
   spinupwpServerId?: string;
   sshAuthMode: "private_key" | "passwordless_agent";
   sshPort: number;
