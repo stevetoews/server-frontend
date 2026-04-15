@@ -23,6 +23,12 @@ import {
 } from "@/lib/api";
 
 const DETAIL_PAGE_SIZE = 5;
+const SECTION_LINKS = [
+  { href: "#onboarding-state", label: "Onboarding" },
+  { href: "#recent-checks", label: "Checks" },
+  { href: "#server-incidents", label: "Incidents" },
+  { href: "#remediation-runs", label: "Remediations" },
+] as const;
 
 interface ServerDetailViewProps {
   server: ServerRecord;
@@ -269,6 +275,18 @@ export function ServerDetailView({ server }: ServerDetailViewProps) {
         </p>
       </div>
 
+      <div className="flex flex-wrap gap-2">
+        {SECTION_LINKS.map((link) => (
+          <a
+            className="rounded-full border border-border bg-white/80 px-4 py-2 text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground transition hover:border-primary/40 hover:text-foreground"
+            href={link.href}
+            key={link.href}
+          >
+            {link.label}
+          </a>
+        ))}
+      </div>
+
       <div className="grid gap-4 xl:grid-cols-3">
         <Card className="space-y-4 xl:col-span-2">
           <div className="flex flex-wrap items-start justify-between gap-3">
@@ -334,7 +352,10 @@ export function ServerDetailView({ server }: ServerDetailViewProps) {
             </div>
           ) : null}
 
-          <div className="rounded-2xl border border-border bg-white/80 p-4 text-sm text-foreground">
+          <div
+            id="onboarding-state"
+            className="rounded-2xl border border-border bg-white/80 p-4 text-sm text-foreground"
+          >
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">
@@ -406,7 +427,7 @@ export function ServerDetailView({ server }: ServerDetailViewProps) {
             </li>
           </ul>
 
-          <div className="border-t border-border pt-3">
+          <div id="recent-checks" className="border-t border-border pt-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
                 <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">
@@ -479,7 +500,7 @@ export function ServerDetailView({ server }: ServerDetailViewProps) {
             ) : null}
           </div>
 
-          <div className="border-t border-border pt-3">
+          <div id="server-incidents" className="border-t border-border pt-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
                 <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">
@@ -581,7 +602,7 @@ export function ServerDetailView({ server }: ServerDetailViewProps) {
             ) : null}
           </div>
 
-          <div className="border-t border-border pt-3">
+          <div id="remediation-runs" className="border-t border-border pt-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
                 <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">
