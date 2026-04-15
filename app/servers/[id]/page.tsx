@@ -29,6 +29,7 @@ export default async function ServerDetailPage({ params }: ServerDetailPageProps
   const activityPayload = await getServerActivity(id, {
     limit: 5,
     offset: 0,
+    cookie: cookieStore.toString(),
   });
 
   return (

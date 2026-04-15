@@ -531,13 +531,17 @@ export async function getServerRemediations(serverId: string, options?: ListOpti
   }>;
 }
 
-export async function getServerActivity(serverId: string, options?: ListOptions) {
+export async function getServerActivity(
+  serverId: string,
+  options?: ListOptions & { cookie?: string },
+) {
   const env = getClientEnv();
   const params = buildPaginationSearchParams(options);
   const response = await fetch(
     `${env.NEXT_PUBLIC_API_BASE_URL}/servers/${serverId}/activity${params.toString() ? `?${params.toString()}` : ""}`,
     {
       cache: "no-store",
+      headers: options?.cookie ? { cookie: options.cookie } : undefined,
       credentials: "include",
     },
   );
