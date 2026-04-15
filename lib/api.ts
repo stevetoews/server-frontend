@@ -459,6 +459,42 @@ export async function getServerRemediations(serverId: string, options?: ListOpti
   }>;
 }
 
+export async function getNotificationTargets(
+  options?: ListOptions & { channel?: "email"; enabled?: boolean },
+) {
+  const env = getClientEnv();
+  const params = buildPaginationSearchParams(options);
+
+  if (options?.channel) {
+    params.set("channel", options.channel);
+  }
+
+  if (typeof options?.enabled === "boolean") {
+    params.set("enabled", options.enabled ? "true" : "false");
+  }
+
+  const response = await fetch(
+    `${env.NEXT_PUBLIC_API_BASE_URL}/notifications/targets${
+      params.toString() ? `?${params.toString()}` : ""
+    }`,
+    {
+      cache: "no-store",
+      credentials: "include",
+    },
+  );
+
+  const payload = await response.json();
+
+  if (!response.ok) {
+    throw new Error(payload?.error?.message ?? "Unable to load notification targets");
+  }
+
+  return payload as ApiEnvelope<{
+    pagination?: PaginationMeta;
+    targets: NotificationTargetRecord[];
+  }>;
+}
+
 export async function getNotificationTargetDeliveries(
   targetId: string,
   options?: ListOptions & { eventType?: string },

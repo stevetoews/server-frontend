@@ -1,4 +1,5 @@
 import { Card } from "@/components/ui/card";
+import { NotificationTargetsPanel } from "@/components/settings/notification-targets-panel";
 
 export function SettingsShell() {
   return (
@@ -27,6 +28,8 @@ export function SettingsShell() {
           </p>
         </Card>
       </div>
+
+      <NotificationTargetsPanel />
     </div>
   );
 }
