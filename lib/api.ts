@@ -110,6 +110,29 @@ export interface RemediationRunRecord {
   status: "running" | "succeeded" | "failed";
 }
 
+export interface NotificationTargetRecord {
+  address: string;
+  channel: "email";
+  createdAt: string;
+  enabled: boolean;
+  id: string;
+  label: string;
+  updatedAt: string;
+}
+
+export interface NotificationDeliveryRecord {
+  bodyText: string;
+  createdAt: string;
+  errorMessage?: string;
+  eventType: string;
+  id: string;
+  status: "delivered" | "failed" | "skipped";
+  subject: string;
+  targetId: string;
+  transportKind?: "smtp" | "simulated";
+  transportResponse?: string;
+}
+
 export interface DashboardSnapshot {
   activeServers: number;
   incidentsOpen: number;
@@ -433,6 +456,40 @@ export async function getServerRemediations(serverId: string, options?: ListOpti
   return payload as ApiEnvelope<{
     runs: RemediationRunRecord[];
     pagination?: PaginationMeta;
+  }>;
+}
+
+export async function getNotificationTargetDeliveries(
+  targetId: string,
+  options?: ListOptions & { eventType?: string },
+) {
+  const env = getClientEnv();
+  const params = buildPaginationSearchParams(options);
+
+  if (options?.eventType) {
+    params.set("eventType", options.eventType);
+  }
+
+  const response = await fetch(
+    `${env.NEXT_PUBLIC_API_BASE_URL}/notifications/targets/${targetId}/deliveries${
+      params.toString() ? `?${params.toString()}` : ""
+    }`,
+    {
+      cache: "no-store",
+      credentials: "include",
+    },
+  );
+
+  const payload = await response.json();
+
+  if (!response.ok) {
+    throw new Error(payload?.error?.message ?? "Unable to load notification target deliveries");
+  }
+
+  return payload as ApiEnvelope<{
+    deliveries: NotificationDeliveryRecord[];
+    pagination?: PaginationMeta;
+    target: NotificationTargetRecord;
   }>;
 }
 
