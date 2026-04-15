@@ -16,6 +16,12 @@ import {
 } from "@/lib/api";
 
 const DELIVERY_PAGE_SIZE = 10;
+const DELIVERY_STATUSES = [
+  { label: "All", value: "" },
+  { label: "Delivered", value: "delivered" },
+  { label: "Failed", value: "failed" },
+  { label: "Skipped", value: "skipped" },
+] as const;
 
 const EMPTY_TARGET_FORM = {
   address: "",
@@ -35,6 +41,7 @@ export function NotificationTargetsPanel() {
   const [isLoadingTargets, setIsLoadingTargets] = useState(true);
   const [createForm, setCreateForm] = useState(EMPTY_TARGET_FORM);
   const [editForm, setEditForm] = useState(EMPTY_TARGET_FORM);
+  const [deliveryStatus, setDeliveryStatus] = useState<"" | "delivered" | "failed" | "skipped">("");
 
   const selectedTarget = useMemo(
     () => targets.find((target) => target.id === selectedTargetId) ?? null,
@@ -51,7 +58,11 @@ export function NotificationTargetsPanel() {
     }
   }, [selectedTarget]);
 
-  function loadDeliveries(targetId: string, offset = deliveryOffset) {
+  function loadDeliveries(
+    targetId: string,
+    offset = deliveryOffset,
+    status: "" | "delivered" | "failed" | "skipped" = deliveryStatus,
+  ) {
     if (!targetId) {
       return;
     }
@@ -64,6 +75,7 @@ export function NotificationTargetsPanel() {
         const payload = await getNotificationTargetDeliveries(targetId, {
           limit: DELIVERY_PAGE_SIZE,
           offset,
+          ...(status ? { status } : {}),
         });
         setDeliveries(payload.data.deliveries);
         setDeliveryPagination(payload.data.pagination ?? null);
@@ -98,6 +110,7 @@ export function NotificationTargetsPanel() {
           const deliveryPayload = await getNotificationTargetDeliveries(nextTargetId, {
             limit: DELIVERY_PAGE_SIZE,
             offset: nextTargetOffset,
+            ...(deliveryStatus ? { status: deliveryStatus } : {}),
           });
           setDeliveries(deliveryPayload.data.deliveries);
           setDeliveryPagination(deliveryPayload.data.pagination ?? null);
@@ -202,6 +215,15 @@ export function NotificationTargetsPanel() {
         );
       }
     });
+  }
+
+  function handleDeliveryStatusChange(value: "" | "delivered" | "failed" | "skipped") {
+    setDeliveryStatus(value);
+    setDeliveryOffset(0);
+
+    if (selectedTargetId) {
+      loadDeliveries(selectedTargetId, 0, value);
+    }
   }
 
   useEffect(() => {
@@ -397,6 +419,24 @@ export function NotificationTargetsPanel() {
               >
                 Refresh History
               </Button>
+            </div>
+
+            <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border pt-4">
+              {DELIVERY_STATUSES.map((statusOption) => (
+                <Button
+                  key={statusOption.value || "all"}
+                  disabled={isPending}
+                  onClick={() =>
+                    handleDeliveryStatusChange(
+                      statusOption.value as "" | "delivered" | "failed" | "skipped",
+                    )
+                  }
+                  type="button"
+                  variant={deliveryStatus === statusOption.value ? "primary" : "secondary"}
+                >
+                  {statusOption.label}
+                </Button>
+              ))}
             </div>
 
             {deliveryPagination ? (

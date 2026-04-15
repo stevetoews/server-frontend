@@ -625,13 +625,17 @@ export async function deleteNotificationTarget(targetId: string) {
 
 export async function getNotificationTargetDeliveries(
   targetId: string,
-  options?: ListOptions & { eventType?: string },
+  options?: ListOptions & { eventType?: string; status?: "delivered" | "failed" | "skipped" },
 ) {
   const env = getClientEnv();
   const params = buildPaginationSearchParams(options);
 
   if (options?.eventType) {
     params.set("eventType", options.eventType);
+  }
+
+  if (options?.status) {
+    params.set("status", options.status);
   }
 
   const response = await fetch(
