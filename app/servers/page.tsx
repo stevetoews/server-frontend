@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { LinodeStandardInfo } from "@/components/servers/linode-standard-info";
 import { getIncidents, getServers, type ServerRecord } from "@/lib/api";
+import { getServerHealthSummary, getToneClasses } from "@/lib/server-health";
 
 type ProviderFilter = "all" | "akamai" | "digitalocean" | "unmatched";
 
@@ -143,23 +144,23 @@ export default async function ServersPage({ searchParams }: ServersPageProps) {
     };
 
     return (
-      <div className="space-y-6">
-        <div className="space-y-2">
-          <p className="text-xs font-semibold uppercase tracking-[0.35em] text-muted-foreground">
+      <div className="space-y-4">
+        <div className="space-y-0.5">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-muted-foreground">
             Servers
           </p>
-          <h1 className="text-3xl font-semibold tracking-tight text-foreground">
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
             Server index
           </h1>
-          <p className="max-w-2xl text-sm text-muted-foreground">
-            Browse every server as a card. Open a server to inspect its health timeline, incidents, remediation runs, and activity history.
+          <p className="max-w-2xl text-xs text-muted-foreground">
+            Compact fleet view. Open a card for the full timeline, incidents, remediations, and activity.
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
           {providerFilterOptions.map((option) => (
             <Link
-              className={`rounded-full border px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] transition ${
+              className={`rounded-full border px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] transition ${
                 providerFilter === option.value
                   ? "border-primary bg-primary text-primary-foreground"
                   : "border-border bg-white/80 text-muted-foreground hover:border-primary/40 hover:text-foreground"
@@ -177,31 +178,32 @@ export default async function ServersPage({ searchParams }: ServersPageProps) {
           ))}
         </div>
 
-        <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-4">
-          <Card className="space-y-2">
-            <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Servers</div>
-            <div className="text-2xl font-semibold text-foreground">{filteredServers.length}</div>
-            <p className="text-sm text-muted-foreground">Total records in the current workspace.</p>
+        <div className="grid gap-2 md:grid-cols-3 xl:grid-cols-4">
+          <Card className="space-y-1 p-2.5">
+            <div className="text-[9px] uppercase tracking-[0.22em] text-muted-foreground">
+              Servers
+            </div>
+            <div className="text-lg font-semibold text-foreground">{filteredServers.length}</div>
           </Card>
-          <Card className="space-y-2">
-            <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Active</div>
-            <div className="text-2xl font-semibold text-foreground">{activeCount}</div>
-            <p className="text-sm text-muted-foreground">Ready for checks, incidents, and remediation.</p>
+          <Card className="space-y-1 p-2.5">
+            <div className="text-[9px] uppercase tracking-[0.22em] text-muted-foreground">
+              Active
+            </div>
+            <div className="text-lg font-semibold text-foreground">{activeCount}</div>
           </Card>
-          <Card className="space-y-2 md:col-span-2">
-            <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">
+          <Card className="space-y-1 p-2.5 md:col-span-2">
+            <div className="text-[9px] uppercase tracking-[0.22em] text-muted-foreground">
               Timeline
             </div>
-            <div className="text-2xl font-semibold text-foreground">{incidentsPayload.data.incidents.length}</div>
-            <p className="text-sm text-muted-foreground">
-              Recent incidents loaded for card summaries and timeline previews.
-            </p>
+            <div className="text-lg font-semibold text-foreground">
+              {incidentsPayload.data.incidents.length}
+            </div>
           </Card>
         </div>
 
-        <div className="grid gap-4">
+        <div className="grid gap-2.5">
           {filteredServers.length === 0 ? (
-            <Card className="space-y-2">
+            <Card className="space-y-2 p-3.5">
               <p className="text-sm text-muted-foreground">
                 No servers match the current provider filter.
               </p>
@@ -215,60 +217,44 @@ export default async function ServersPage({ searchParams }: ServersPageProps) {
               ).length;
               const latestIncident = serverIncidents[0];
               const lastActivityAt = latestIncident?.openedAt ?? server.updatedAt;
+              const serverHealth = getServerHealthSummary(server, serverIncidents);
 
               return (
                 <Link className="group block" href={`/servers/${server.id}`} key={server.id}>
-                  <Card className="space-y-4 transition group-hover:border-primary/40 group-hover:bg-white">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="space-y-2">
+                  <Card className="space-y-2.5 p-3.5 md:p-4 transition group-hover:border-primary/40 group-hover:bg-white">
+                    <div className="flex items-start justify-between gap-2.5">
+                      <div className="space-y-1">
                         <div className="flex flex-wrap items-center gap-2">
                           <ProviderBadge kind={server.providerMatch?.providerKind} />
-                          <span className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
+                          <span
+                            className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${getToneClasses(serverHealth.tone)}`}
+                          >
+                            {serverHealth.label}
+                          </span>
+                          <span className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
                             {server.environment}
                           </span>
-                          <span className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
+                          <span className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
                             {server.onboardingStatus}
                           </span>
                         </div>
-                        <h2 className="text-xl font-semibold text-foreground">{server.name}</h2>
-                        <p className="text-sm text-muted-foreground">
+                        <h2 className="text-base font-semibold text-foreground">{server.name}</h2>
+                        <p className="text-xs text-muted-foreground">
                           {server.hostname}
                           {server.ipAddress ? ` • ${server.ipAddress}` : ""}
                         </p>
                       </div>
-                      <span className="rounded-full border border-border bg-white px-3 py-1 text-[11px] uppercase tracking-[0.22em] text-muted-foreground transition group-hover:border-primary/40 group-hover:text-foreground">
-                        Open timeline
-                      </span>
                     </div>
 
                     {server.providerSnapshot ? <LinodeStandardInfo server={server} /> : null}
 
-                    <div className="grid gap-3 md:grid-cols-3">
-                      <div className="rounded-2xl border border-border/80 bg-white/80 p-3">
-                        <div className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
-                          Open
-                        </div>
-                        <div className="mt-1 text-lg font-semibold text-foreground">{openCount}</div>
-                      </div>
-                      <div className="rounded-2xl border border-border/80 bg-white/80 p-3">
-                        <div className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
-                          Pending
-                        </div>
-                        <div className="mt-1 text-lg font-semibold text-foreground">
-                          {remediationPendingCount}
-                        </div>
-                      </div>
-                      <div className="rounded-2xl border border-border/80 bg-white/80 p-3">
-                        <div className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
-                          Last activity
-                        </div>
-                        <div className="mt-1 text-sm font-medium text-foreground">
-                          {new Date(lastActivityAt).toLocaleString()}
-                        </div>
-                      </div>
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+                      <span>Open {openCount}</span>
+                      <span>Pending {remediationPendingCount}</span>
+                      <span>Updated {new Date(lastActivityAt).toLocaleString()}</span>
                     </div>
 
-                    <div className="space-y-1 text-sm text-muted-foreground">
+                    <div className="space-y-0.5 text-xs text-muted-foreground">
                       <div className="font-medium text-foreground">
                         {latestIncident ? latestIncident.title : "No incidents yet"}
                       </div>
@@ -277,7 +263,7 @@ export default async function ServersPage({ searchParams }: ServersPageProps) {
                           ? `Latest incident opened ${new Date(latestIncident.openedAt).toLocaleString()}`
                           : `Last updated ${new Date(server.updatedAt).toLocaleString()}`}
                       </div>
-                      <div>{server.notes ?? "No server notes recorded."}</div>
+                      {server.notes ? <div>{server.notes}</div> : null}
                     </div>
                   </Card>
                 </Link>

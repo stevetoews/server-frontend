@@ -7,6 +7,12 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { LinodeStandardInfo } from "@/components/servers/linode-standard-info";
 import {
+  getCheckTone,
+  getIncidentTone,
+  getServerHealthSummary,
+  getToneClasses,
+} from "@/lib/server-health";
+import {
   activateServer,
   getServerActivity,
   getServerChecks,
@@ -128,6 +134,7 @@ export function ServerDetailView({
       ? "Akamai"
       : "DigitalOcean"
     : "Unmatched";
+  const serverHealth = getServerHealthSummary(server, incidents);
 
   function handleConfirmProviderMatch() {
     if (!server.providerMatch) {
@@ -419,12 +426,12 @@ export function ServerDetailView({
   }, [server.id]);
 
   return (
-    <div className="space-y-6">
-      <div className="space-y-2">
+    <div className="space-y-4">
+      <div className="space-y-1">
         <p className="text-xs font-semibold uppercase tracking-[0.35em] text-muted-foreground">
           Server Detail
         </p>
-        <h1 className="text-3xl font-semibold tracking-tight text-foreground">{server.name}</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground">{server.name}</h1>
         <p className="text-sm text-muted-foreground">
           {server.hostname} • {server.environment} • onboarding status: {server.onboardingStatus}
         </p>
@@ -433,7 +440,7 @@ export function ServerDetailView({
       <div className="flex flex-wrap gap-2">
         {SECTION_LINKS.map((link) => (
           <a
-            className="rounded-full border border-border bg-white/80 px-4 py-2 text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground transition hover:border-primary/40 hover:text-foreground"
+            className="rounded-full border border-border bg-white/80 px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground transition hover:border-primary/40 hover:text-foreground"
             href={link.href}
             key={link.href}
           >
@@ -442,31 +449,40 @@ export function ServerDetailView({
         ))}
       </div>
 
-      <Card id="server-information" className="space-y-3">
-        <div className="flex flex-wrap items-start justify-between gap-3">
+      <Card id="server-information" className="space-y-2 p-4 md:p-5">
+        <div className="flex flex-wrap items-start justify-between gap-2">
           <div>
-            <h2 className="text-lg font-semibold text-foreground">Server information</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
+            <h2 className="text-base font-semibold text-foreground">Server information</h2>
+            <p className="mt-0.5 text-xs text-muted-foreground">
               Core identity and state. The operational cards come after this.
             </p>
           </div>
-          <div className="rounded-full border border-border px-3 py-1 text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
-            {providerLabel}
+          <div className="flex flex-wrap items-center gap-2">
+            <div
+              className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${getToneClasses(serverHealth.tone)}`}
+            >
+              {serverHealth.label}
+            </div>
+            <div className="rounded-full border border-border px-2.5 py-1 text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+              {providerLabel}
+            </div>
           </div>
         </div>
 
-        <div className="grid gap-3 md:grid-cols-2">
-          <div className="rounded-2xl border border-border bg-white/80 p-4 text-sm text-foreground">
-            <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Identity</div>
-            <div className="mt-2 font-medium">{server.name}</div>
+        <div className="grid gap-2 md:grid-cols-2">
+          <div className="rounded-xl border border-border bg-white/75 p-3 text-sm text-foreground">
+            <div className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
+              Identity
+            </div>
+            <div className="mt-1.5 font-medium">{server.name}</div>
             <div className="mt-1 text-muted-foreground">{server.hostname}</div>
             <div className="mt-1 text-muted-foreground">
               {server.environment} • {server.onboardingStatus}
             </div>
           </div>
-          <div className="rounded-2xl border border-border bg-white/80 p-4 text-sm text-foreground">
-            <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">SSH</div>
-            <div className="mt-2">
+          <div className="rounded-xl border border-border bg-white/75 p-3 text-sm text-foreground">
+            <div className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">SSH</div>
+            <div className="mt-1.5">
               {server.sshUsername}@{server.ipAddress ?? server.hostname}:{server.sshPort}
             </div>
             <div className="mt-1 text-muted-foreground">Mode: {server.sshAuthMode}</div>
@@ -474,51 +490,53 @@ export function ServerDetailView({
         </div>
 
         {server.notes ? (
-          <div className="rounded-2xl border border-border bg-white/80 p-4 text-sm text-foreground">
-            <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Notes</div>
-            <div className="mt-2">{server.notes}</div>
+          <div className="rounded-xl border border-border bg-white/75 p-3 text-sm text-foreground">
+            <div className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">Notes</div>
+            <div className="mt-1.5">{server.notes}</div>
           </div>
         ) : null}
       </Card>
 
       {server.providerSnapshot ? (
-        <Card id="linode-standard-info" className="space-y-3">
+        <Card id="linode-standard-info" className="space-y-2 p-4 md:p-5">
           <LinodeStandardInfo server={server} />
         </Card>
       ) : null}
 
-      <Card id="onboarding-state" className="space-y-3">
-        <div className="flex flex-wrap items-start justify-between gap-3">
+      <Card id="onboarding-state" className="space-y-2 p-4 md:p-5">
+        <div className="flex flex-wrap items-start justify-between gap-2">
           <div>
-            <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">
+            <div className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
               Onboarding
             </div>
-            <h2 className="mt-1 text-lg font-semibold text-foreground">Provider activation</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
+            <h2 className="mt-1 text-base font-semibold text-foreground">Provider activation</h2>
+            <p className="mt-0.5 text-xs text-muted-foreground">
               Compact gate for provider confirmation and SpinupWP mapping.
             </p>
           </div>
-          <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">
+          <div className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
             {server.spinupwpServerId ? "Mapped" : "Not mapped"}
           </div>
         </div>
 
         {statusMessage ? (
-          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
             {statusMessage}
           </div>
         ) : null}
 
         {error ? (
-          <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+          <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
             {error}
           </div>
         ) : null}
 
-        <div className="grid gap-3 md:grid-cols-2">
-          <div className="rounded-2xl border border-border bg-white/80 p-4 text-sm text-foreground">
-            <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Gate</div>
-            <div className="mt-2">
+        <div className="grid gap-2 md:grid-cols-2">
+          <div className="rounded-xl border border-border bg-white/75 p-3 text-sm text-foreground">
+            <div className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
+              Gate
+            </div>
+            <div className="mt-1.5">
               {server.providerMatch
                 ? `${providerLabel} ${Math.round(server.providerMatch.confidence * 100)}%`
                 : "Awaiting provider confirmation"}
@@ -529,11 +547,11 @@ export function ServerDetailView({
                 : "Activation stays blocked until the provider is confirmed."}
             </div>
           </div>
-          <div className="rounded-2xl border border-border bg-white/80 p-4 text-sm text-foreground">
-            <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">
+          <div className="rounded-xl border border-border bg-white/75 p-3 text-sm text-foreground">
+            <div className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
               SpinupWP
             </div>
-            <div className="mt-2">
+            <div className="mt-1.5">
               {server.spinupwpServerId
                 ? `Mapped to ${server.spinupwpServerId}`
                 : "Not mapped yet"}
@@ -563,9 +581,9 @@ export function ServerDetailView({
         </div>
 
         {spinupwpCandidates.length > 0 ? (
-          <div className="space-y-3 border-t border-border pt-3">
+          <div className="space-y-2 border-t border-border pt-3">
             <select
-              className="h-12 w-full rounded-2xl border border-border bg-white px-4 text-sm"
+              className="h-11 w-full rounded-xl border border-border bg-white px-3 text-sm"
               onChange={(event) => setSelectedSpinupwpServerId(event.target.value)}
               value={selectedSpinupwpServerId}
             >
@@ -590,13 +608,13 @@ export function ServerDetailView({
         ) : null}
       </Card>
 
-      <Card id="recent-checks" className="space-y-3">
+      <Card id="recent-checks" className="space-y-2 p-4 md:p-5">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
-            <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">
+            <div className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
               Recent Checks
             </div>
-            <div className="mt-1 text-sm text-muted-foreground">
+            <div className="mt-0.5 text-sm text-muted-foreground">
               {checksPagination ? (
                 <span>
                   Showing {checksPagination.offset + 1}-{checksPagination.offset + checksPagination.returned} of{" "}
@@ -609,7 +627,12 @@ export function ServerDetailView({
           </div>
 
           <div className="flex flex-wrap gap-2">
-            <Button disabled={isPending} onClick={() => loadChecks(0)} type="button" variant="secondary">
+            <Button
+              disabled={isPending}
+              onClick={() => loadChecks(0)}
+              type="button"
+              variant="secondary"
+            >
               Refresh
             </Button>
             <Button disabled={isPending || !server.spinupwpServerId} onClick={handleRunChecks} type="button">
@@ -634,13 +657,18 @@ export function ServerDetailView({
                         <div className="text-muted-foreground">{check.summary}</div>
                       </div>
                       {incidentHref ? (
-                        <span className="rounded-full border border-border px-2 py-0.5 text-[11px] uppercase tracking-[0.24em] text-muted-foreground">
+                        <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] uppercase tracking-[0.24em] text-amber-700">
                           Active incident
                         </span>
                       ) : null}
                     </div>
-                    <div className="mt-1 text-xs text-muted-foreground">
-                      {check.status} • {new Date(check.createdAt).toLocaleString()}
+                    <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                      <span
+                        className={`rounded-full border px-2 py-0.5 uppercase tracking-[0.2em] ${getToneClasses(getCheckTone(check.status))}`}
+                      >
+                        {check.status}
+                      </span>
+                      <span>{new Date(check.createdAt).toLocaleString()}</span>
                     </div>
                   </>
                 );
@@ -648,7 +676,7 @@ export function ServerDetailView({
                 if (incidentHref) {
                   return (
                     <a
-                      className="block rounded-2xl border border-border bg-white/80 p-3 text-sm text-foreground transition hover:border-primary/40 hover:bg-white"
+                      className="block rounded-xl border border-border bg-white/75 p-2.5 text-sm text-foreground transition hover:border-primary/40 hover:bg-white"
                       href={incidentHref}
                       key={check.id}
                     >
@@ -659,7 +687,7 @@ export function ServerDetailView({
 
                 return (
                   <div
-                    className="rounded-2xl border border-border bg-white/80 p-3 text-sm text-foreground"
+                    className="rounded-xl border border-border bg-white/75 p-2.5 text-sm text-foreground"
                     key={check.id}
                   >
                     {content}
@@ -697,11 +725,13 @@ export function ServerDetailView({
         ) : null}
       </Card>
 
-      <Card id="server-incidents" className="space-y-3">
+      <Card id="server-incidents" className="space-y-2 p-4 md:p-5">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
-            <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Incidents</div>
-            <div className="mt-1 text-sm text-muted-foreground">
+            <div className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
+              Incidents
+            </div>
+            <div className="mt-0.5 text-sm text-muted-foreground">
               {incidentsPagination ? (
                 <span>
                   Showing {incidentsPagination.offset + 1}-{incidentsPagination.offset + incidentsPagination.returned} of{" "}
@@ -729,7 +759,7 @@ export function ServerDetailView({
           ) : (
             incidents.map((incident) => (
               <div
-                className="rounded-2xl border border-border bg-white/80 p-3 text-sm text-foreground"
+                className="rounded-xl border border-border bg-white/75 p-2.5 text-sm text-foreground"
                 id={`incident-${incident.id}`}
                 key={incident.id}
               >
@@ -737,8 +767,14 @@ export function ServerDetailView({
                   <div className="space-y-1">
                     <div className="font-medium">{incident.title}</div>
                     <div className="text-muted-foreground">{incident.summary ?? "No summary"}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {incident.severity} • {incident.status} • {new Date(incident.openedAt).toLocaleString()}
+                    <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                      <span
+                        className={`rounded-full border px-2 py-0.5 uppercase tracking-[0.2em] ${getToneClasses(getIncidentTone(incident.severity))}`}
+                      >
+                        {incident.severity}
+                      </span>
+                      <span>{incident.status}</span>
+                      <span>{new Date(incident.openedAt).toLocaleString()}</span>
                     </div>
                   </div>
                   <a
@@ -771,7 +807,7 @@ export function ServerDetailView({
                   </div>
                 ) : null}
                 {incident.status === "remediation_pending" ? (
-                  <div className="mt-3 text-xs text-amber-700">
+                  <div className="mt-2 text-xs text-amber-700">
                     Remediation completed. Waiting for a healthy follow-up check before resolution.
                   </div>
                 ) : null}
@@ -807,13 +843,13 @@ export function ServerDetailView({
         ) : null}
       </Card>
 
-      <Card id="remediation-runs" className="space-y-3">
+      <Card id="remediation-runs" className="space-y-2 p-4 md:p-5">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
-            <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">
+            <div className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
               Remediation Runs
             </div>
-            <div className="mt-1 text-sm text-muted-foreground">
+            <div className="mt-0.5 text-sm text-muted-foreground">
               {runsPagination ? (
                 <span>
                   Showing {runsPagination.offset + 1}-{runsPagination.offset + runsPagination.returned} of{" "}
@@ -836,7 +872,7 @@ export function ServerDetailView({
           ) : (
             runs.map((run) => (
               <div
-                className="rounded-2xl border border-border bg-white/80 p-3 text-sm text-foreground"
+                className="rounded-xl border border-border bg-white/75 p-2.5 text-sm text-foreground"
                 id={`remediation-${run.id}`}
                 key={run.id}
               >
@@ -889,11 +925,13 @@ export function ServerDetailView({
         ) : null}
       </Card>
 
-      <Card id="activity-feed" className="space-y-3">
+      <Card id="activity-feed" className="space-y-2 p-4 md:p-5">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
-            <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Activity Feed</div>
-            <div className="mt-1 text-sm text-muted-foreground">
+            <div className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
+              Activity Feed
+            </div>
+            <div className="mt-0.5 text-sm text-muted-foreground">
               {activityPagination ? (
                 <span>
                   Showing {activityPagination.offset + 1}-
@@ -924,11 +962,11 @@ export function ServerDetailView({
           </Button>
         </div>
 
-        <div className="grid gap-3 rounded-2xl border border-border bg-white/70 p-4 lg:grid-cols-[180px_minmax(0,1fr)_auto_auto]">
+        <div className="grid gap-2 rounded-xl border border-border bg-white/70 p-3 lg:grid-cols-[160px_minmax(0,1fr)_auto_auto]">
           <label className="space-y-1 text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">
             Kind
             <select
-              className="h-11 w-full rounded-xl border border-border bg-white px-3 text-sm font-normal uppercase tracking-normal text-foreground"
+              className="h-10 w-full rounded-xl border border-border bg-white px-3 text-sm font-normal uppercase tracking-normal text-foreground"
               onChange={(event) => setActivityKindFilter(event.target.value as ActivityKindFilter)}
               value={activityKindFilter}
             >
@@ -943,7 +981,7 @@ export function ServerDetailView({
           <label className="space-y-1 text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">
             Event type
             <input
-              className="h-11 w-full rounded-xl border border-border bg-white px-3 text-sm text-foreground placeholder:text-muted-foreground"
+              className="h-10 w-full rounded-xl border border-border bg-white px-3 text-sm text-foreground placeholder:text-muted-foreground"
               onChange={(event) => setActivityEventType(event.target.value)}
               placeholder="e.g. restart.nginx"
               value={activityEventType}
@@ -973,7 +1011,7 @@ export function ServerDetailView({
           ) : (
             activity.map((entry) => (
               <a
-                className="block rounded-2xl border border-border bg-white/80 p-3 text-sm text-foreground transition hover:border-primary/40 hover:bg-white"
+                className="block rounded-xl border border-border bg-white/75 p-2.5 text-sm text-foreground transition hover:border-primary/40 hover:bg-white"
                 href={getActivitySourceHref(entry)}
                 id={`activity-${entry.id}`}
                 key={entry.id}

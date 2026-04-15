@@ -50,10 +50,12 @@ export interface ServerRecord {
   name: string;
   notes?: string;
   onboardingStatus: "draft" | "ssh_verified" | "discovered" | "provider_matched" | "active";
+  osName?: string;
+  osVersion?: string;
   providerMatch?: ProviderMatch;
   providerSnapshot?: LinodeSnapshot;
   spinupwpServerId?: string;
-  sshAuthMode: "private_key" | "passwordless_agent";
+  sshAuthMode: "password" | "private_key" | "passwordless_agent";
   sshPort: number;
   sshUsername: string;
   updatedAt: string;
@@ -168,13 +170,6 @@ export interface NotificationDeliveryRecord {
   transportResponse?: string;
 }
 
-export interface DashboardSnapshot {
-  activeServers: number;
-  incidentsOpen: number;
-  checksPassing: number;
-  providerCoverage: string;
-}
-
 export interface PaginationMeta {
   hasMore: boolean;
   limit: number;
@@ -244,15 +239,6 @@ export async function getHealth() {
   return response.json();
 }
 
-export function getDashboardSnapshot(): DashboardSnapshot {
-  return {
-    activeServers: 12,
-    incidentsOpen: 3,
-    checksPassing: 94,
-    providerCoverage: "Linode 8 / DigitalOcean 4",
-  };
-}
-
 export async function login(input: { email: string; password: string }) {
   const env = getClientEnv();
   const response = await fetch(`${env.NEXT_PUBLIC_API_BASE_URL}/auth/login`, {
@@ -316,6 +302,7 @@ export async function createServer(input: {
   name: string;
   notes?: string;
   sshAuthMode: ServerRecord["sshAuthMode"];
+  sshPassword?: string;
   sshPort?: number;
   sshUsername: string;
 }) {

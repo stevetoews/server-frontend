@@ -1,5 +1,3 @@
-import type { ReactNode } from "react";
-
 import type { ServerRecord } from "@/lib/api";
 
 interface LinodeStandardInfoProps {
@@ -8,25 +6,6 @@ interface LinodeStandardInfoProps {
 
 function formatStorage(value: number) {
   return `${value} GB`;
-}
-
-function DetailField({
-  label,
-  children,
-  small = false,
-}: {
-  children: ReactNode;
-  label: string;
-  small?: boolean;
-}) {
-  return (
-    <div className="rounded-2xl border border-border/80 bg-white/80 p-4">
-      <div className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground">{label}</div>
-      <div className={small ? "mt-2 text-xs text-foreground" : "mt-2 text-sm text-foreground"}>
-        {children}
-      </div>
-    </div>
-  );
 }
 
 export function LinodeStandardInfo({ server }: LinodeStandardInfoProps) {
@@ -39,42 +18,99 @@ export function LinodeStandardInfo({ server }: LinodeStandardInfoProps) {
   const ipv6Label = snapshot.publicIpv6.length > 0 ? snapshot.publicIpv6.join(", ") : "None";
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+    <div className="space-y-2.5">
+      <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
-          <h3 className="text-lg font-semibold text-foreground">Linode standard information</h3>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <h3 className="text-sm font-semibold text-foreground">Linode inventory</h3>
+          <p className="mt-0.5 text-[11px] text-muted-foreground">
             Pulled from Linode plus the latest disk-usage probe.
           </p>
         </div>
-        <div className="rounded-full border border-border px-3 py-1 text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
-          {snapshot.summary}
+        <div className="flex flex-wrap items-center justify-end gap-1.5">
+          <div className="rounded-full border border-border bg-white/80 px-2.5 py-1 text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+            {snapshot.summary}
+          </div>
+          {snapshot.tags.length > 0 ? (
+            snapshot.tags.map((tag) => (
+              <div
+                className="rounded-full border border-border bg-white/70 px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-muted-foreground"
+                key={tag}
+              >
+                {tag}
+              </div>
+            ))
+          ) : (
+            <div className="rounded-full border border-border bg-white/70 px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+              No tags
+            </div>
+          )}
         </div>
       </div>
 
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-        <DetailField label="Summary">{snapshot.summary}</DetailField>
-        <DetailField label="CPU Cores">{snapshot.cpuCores}</DetailField>
-        <DetailField label="GB RAM">{snapshot.ramGb}</DetailField>
-        <DetailField label="Total Storage">{formatStorage(snapshot.totalStorageGb)}</DetailField>
-        <DetailField label="Used Storage">
-          {typeof snapshot.usedStoragePercent === "number"
-            ? `${snapshot.usedStoragePercent}% used`
-            : "Unavailable"}
-        </DetailField>
-        <DetailField label="Public IP v4">{ipv4Label}</DetailField>
-        <DetailField label="Public IP v6">{ipv6Label}</DetailField>
-        <DetailField label="Plan">{snapshot.planLabel}</DetailField>
-        <DetailField label="Region">{snapshot.region}</DetailField>
-        <DetailField label="Tags" small>
-          {snapshot.tags.length > 0 ? snapshot.tags.join(", ") : "None"}
-        </DetailField>
-        <DetailField label="Linode ID" small>
-          {snapshot.linodeId}
-        </DetailField>
-        <DetailField label="Created" small>
-          {new Date(snapshot.createdAt).toLocaleString()}
-        </DetailField>
+      <div className="grid gap-x-5 gap-y-2 sm:grid-cols-2 xl:grid-cols-3">
+        <div>
+          <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+            CPU Cores
+          </div>
+          <div className="mt-0.5 text-sm font-medium text-foreground">{snapshot.cpuCores}</div>
+        </div>
+        <div>
+          <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+            GB RAM
+          </div>
+          <div className="mt-0.5 text-sm font-medium text-foreground">{snapshot.ramGb}</div>
+        </div>
+        <div>
+          <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+            Total Storage
+          </div>
+          <div className="mt-0.5 text-sm font-medium text-foreground">
+            {formatStorage(snapshot.totalStorageGb)}
+          </div>
+        </div>
+        <div>
+          <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+            Used Storage
+          </div>
+          <div className="mt-0.5 text-sm font-medium text-foreground">
+            {typeof snapshot.usedStoragePercent === "number"
+              ? `${snapshot.usedStoragePercent}% used`
+              : "Unavailable"}
+          </div>
+        </div>
+        <div>
+          <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+            Public IP v4
+          </div>
+          <div className="mt-0.5 text-sm font-medium text-foreground">{ipv4Label}</div>
+        </div>
+        <div>
+          <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+            Public IP v6
+          </div>
+          <div className="mt-0.5 text-sm font-medium text-foreground">{ipv6Label}</div>
+        </div>
+        <div>
+          <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+            Plan
+          </div>
+          <div className="mt-0.5 text-sm font-medium text-foreground">{snapshot.planLabel}</div>
+        </div>
+        <div>
+          <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+            Region
+          </div>
+          <div className="mt-0.5 text-sm font-medium text-foreground">{snapshot.region}</div>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-border/60 pt-2 text-[11px] text-muted-foreground">
+        <span>
+          Linode ID: <span className="text-foreground">{snapshot.linodeId}</span>
+        </span>
+        <span>
+          Created: <span className="text-foreground">{new Date(snapshot.createdAt).toLocaleString()}</span>
+        </span>
       </div>
     </div>
   );

@@ -8,12 +8,11 @@ import { Card } from "@/components/ui/card";
 import { createServer, type OnboardingSnapshot } from "@/lib/api";
 
 const steps = [
-  "Draft server record",
+  "Create server record",
   "Test SSH",
   "Discover host metadata",
-  "Require provider match",
-  "Allow SpinupWP mapping",
-  "Start health checks",
+  "Confirm provider match",
+  "Activate monitoring",
 ] as const;
 
 export function AddServerWizard() {
@@ -24,7 +23,8 @@ export function AddServerWizard() {
   const [hostname, setHostname] = useState("");
   const [ipAddress, setIpAddress] = useState("");
   const [sshUsername, setSshUsername] = useState("root");
-  const [sshAuthMode, setSshAuthMode] = useState<"private_key" | "passwordless_agent">("private_key");
+  const [sshAuthMode, setSshAuthMode] = useState<"password" | "passwordless_agent">("password");
+  const [sshPassword, setSshPassword] = useState("");
   const [notes, setNotes] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [onboarding, setOnboarding] = useState<OnboardingSnapshot | null>(null);
@@ -41,6 +41,7 @@ export function AddServerWizard() {
           hostname,
           sshUsername,
           sshAuthMode,
+          ...(sshAuthMode === "password" ? { sshPassword } : {}),
           ...(ipAddress.trim() ? { ipAddress: ipAddress.trim() } : {}),
           ...(notes.trim() ? { notes: notes.trim() } : {}),
         });
@@ -91,10 +92,10 @@ export function AddServerWizard() {
         <Card className="space-y-5">
           <div className="space-y-1">
             <h1 className="text-3xl font-semibold tracking-tight text-foreground">
-              SSH-first onboarding
+              Add the first live server
             </h1>
             <p className="text-sm text-muted-foreground">
-              Save the draft, test SSH immediately, discover host metadata, then rank provider candidates before any activation.
+              Store the server, test the SSH connection immediately, discover the host, then confirm the provider before monitoring starts.
             </p>
           </div>
 
@@ -155,14 +156,27 @@ export function AddServerWizard() {
                 <select
                   className="h-12 rounded-2xl border border-border bg-white px-4 text-sm"
                   onChange={(event) =>
-                    setSshAuthMode(event.target.value as "private_key" | "passwordless_agent")
+                    setSshAuthMode(event.target.value as "password" | "passwordless_agent")
                   }
                   value={sshAuthMode}
                 >
-                  <option value="private_key">private_key</option>
+                  <option value="password">password</option>
                   <option value="passwordless_agent">passwordless_agent</option>
                 </select>
               </label>
+              {sshAuthMode === "password" ? (
+                <label className="space-y-2">
+                  <span className="text-sm font-medium text-foreground">Root password</span>
+                  <input
+                    autoComplete="current-password"
+                    className="h-12 rounded-2xl border border-border bg-white px-4 text-sm"
+                    onChange={(event) => setSshPassword(event.target.value)}
+                    placeholder="Stored encrypted on the backend"
+                    type="password"
+                    value={sshPassword}
+                  />
+                </label>
+              ) : null}
             </div>
 
             <label className="block space-y-2">
@@ -183,17 +197,14 @@ export function AddServerWizard() {
 
             <div className="flex flex-wrap gap-3">
               <Button disabled={isPending} type="submit">
-                {isPending ? "Saving Draft..." : "Save Draft and Test SSH"}
-              </Button>
-              <Button disabled type="button" variant="secondary">
-                Preview Provider Matching
+                {isPending ? "Testing SSH..." : "Create Server and Test SSH"}
               </Button>
             </div>
           </form>
         </Card>
 
         <Card className="space-y-4">
-          <h2 className="text-lg font-semibold text-foreground">Provider match gate</h2>
+          <h2 className="text-lg font-semibold text-foreground">Onboarding result</h2>
           {onboarding ? (
             <div className="space-y-4">
               <div className="rounded-2xl border border-border bg-white/80 p-4 text-sm text-foreground">
@@ -209,7 +220,7 @@ export function AddServerWizard() {
             </div>
           ) : (
             <p className="text-sm text-muted-foreground">
-              Submit the draft to see SSH verification, discovery, and provider candidates from the backend.
+              Submit the server to verify SSH, collect host metadata, and load provider candidates from the backend.
             </p>
           )}
         </Card>

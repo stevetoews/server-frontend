@@ -2,34 +2,42 @@ import { Activity, AlertTriangle, ServerCog, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 
 import { Card } from "@/components/ui/card";
-import { getDashboardSnapshot, type IncidentRecord } from "@/lib/api";
-
-const snapshot = getDashboardSnapshot();
+import type { IncidentRecord, ServerRecord } from "@/lib/api";
 
 interface DashboardShellProps {
   incidents: IncidentRecord[];
+  servers: ServerRecord[];
 }
 
-export function DashboardShell({ incidents }: DashboardShellProps) {
+export function DashboardShell({ incidents, servers }: DashboardShellProps) {
+  const unresolvedIncidents = incidents.filter((incident) => incident.status !== "resolved");
+  const activeServers = servers.filter((server) => server.onboardingStatus === "active");
+  const providerCoverage = {
+    akamai: servers.filter((server) => server.providerMatch?.providerKind === "linode").length,
+    digitalocean: servers.filter((server) => server.providerMatch?.providerKind === "digitalocean")
+      .length,
+  };
+  const impactedServerIds = new Set(unresolvedIncidents.map((incident) => incident.serverId));
+  const healthyServerCount = activeServers.filter((server) => !impactedServerIds.has(server.id)).length;
   const stats = [
     {
       label: "Active Servers",
-      value: snapshot.activeServers,
+      value: activeServers.length,
       icon: ServerCog,
     },
     {
       label: "Open Incidents",
-      value: snapshot.incidentsOpen,
+      value: unresolvedIncidents.length,
       icon: AlertTriangle,
     },
     {
-      label: "Passing Checks",
-      value: `${snapshot.checksPassing}%`,
+      label: "Healthy Servers",
+      value: healthyServerCount,
       icon: ShieldCheck,
     },
     {
       label: "Provider Coverage",
-      value: snapshot.providerCoverage,
+      value: `Akamai ${providerCoverage.akamai} / DO ${providerCoverage.digitalocean}`,
       icon: Activity,
     },
   ];
@@ -65,7 +73,7 @@ export function DashboardShell({ incidents }: DashboardShellProps) {
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold text-foreground">Recent incidents</h2>
             <span className="text-sm text-muted-foreground">
-              {incidents.filter((incident) => incident.status !== "resolved").length} unresolved
+              {unresolvedIncidents.length} unresolved
             </span>
           </div>
           <div className="space-y-3">
