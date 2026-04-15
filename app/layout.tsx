@@ -58,8 +58,8 @@ export default async function RootLayout({
       <body>
         <div className="min-h-screen">
           <div className="mx-auto flex min-h-screen max-w-7xl flex-col px-4 py-6 sm:px-6 lg:px-8">
-            <header className="mb-8 flex flex-col gap-4 rounded-[1.75rem] border border-border/70 bg-white/70 px-6 py-5 backdrop-blur md:flex-row md:items-center md:justify-between">
-              <div>
+            <header className="mb-8 flex items-center justify-between gap-4 overflow-x-auto rounded-2xl border border-border/70 bg-card/85 px-5 py-4 backdrop-blur">
+              <div className="shrink-0">
                 <p className="text-xs font-semibold uppercase tracking-[0.38em] text-muted-foreground">
                   Internal Platform
                 </p>
@@ -68,11 +68,11 @@ export default async function RootLayout({
                 </p>
               </div>
 
-              <div className="flex flex-col gap-3 md:items-end">
-                <nav className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+              <div className="flex shrink-0 items-center gap-3">
+                <nav className="flex flex-nowrap items-center gap-1.5 text-sm text-muted-foreground">
                   {visibleNavigation.map((item) => (
                     <Link
-                      className="rounded-full px-4 py-2 transition hover:bg-accent hover:text-foreground"
+                      className="rounded-full px-3.5 py-2 transition hover:bg-accent hover:text-foreground"
                       href={item.href}
                       key={item.href}
                     >
@@ -84,7 +84,7 @@ export default async function RootLayout({
                 {currentUser ? (
                   <AccountMenu session={currentUser.session} user={currentUser.user} />
                 ) : (
-                  <div className="rounded-full border border-dashed border-border/80 bg-card px-4 py-2 text-xs text-muted-foreground">
+                  <div className="rounded-full border border-dashed border-border/80 bg-background/60 px-4 py-2 text-xs text-muted-foreground">
                     Restricted access
                   </div>
                 )}

@@ -113,21 +113,21 @@ export function AccountMenu({ session, user }: AccountMenuProps) {
 
       <div
         className={cn(
-          "absolute right-0 top-[calc(100%+0.75rem)] z-50 w-80 overflow-hidden rounded-[1.5rem] border border-border/80 bg-white/95 p-3 shadow-[0_30px_70px_-40px_rgba(15,23,42,0.45)] backdrop-blur transition duration-150",
+          "absolute right-0 top-[calc(100%+0.75rem)] z-50 w-80 overflow-hidden rounded-2xl border border-border/80 bg-card/95 p-3 shadow-[0_30px_70px_-40px_rgba(0,0,0,0.75)] backdrop-blur transition duration-150",
           isOpen
             ? "pointer-events-auto translate-y-0 opacity-100"
             : "pointer-events-none -translate-y-1 opacity-0",
         )}
         role="menu"
       >
-        <div className="rounded-[1.2rem] border border-border/70 bg-card px-4 py-3">
+        <div className="rounded-xl border border-border/70 bg-background/45 px-4 py-3">
           <div className="flex items-start gap-3">
             <div className="grid h-10 w-10 place-items-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
               {initials}
             </div>
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold text-foreground">{user.email}</p>
-              <div className="mt-1 inline-flex items-center gap-1 rounded-full border border-border bg-white px-2 py-1 text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
+              <div className="mt-1 inline-flex items-center gap-1 rounded-full border border-border bg-background/60 px-2 py-1 text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
                 <ShieldUser className="h-3.5 w-3.5" />
                 {user.role}
               </div>
@@ -135,14 +135,14 @@ export function AccountMenu({ session, user }: AccountMenuProps) {
           </div>
 
           <div className="mt-4 grid gap-2 text-xs text-muted-foreground sm:grid-cols-2">
-            <div className="rounded-[1rem] border border-border/70 bg-white px-3 py-2">
+            <div className="rounded-xl border border-border/70 bg-card px-3 py-2">
               <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
                 <ShieldUser className="h-3.5 w-3.5" />
                 Account since
               </div>
               <p className="mt-1 text-sm text-foreground">{accountSinceLabel}</p>
             </div>
-            <div className="rounded-[1rem] border border-border/70 bg-white px-3 py-2">
+            <div className="rounded-xl border border-border/70 bg-card px-3 py-2">
               <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
                 <Clock3 className="h-3.5 w-3.5" />
                 Session

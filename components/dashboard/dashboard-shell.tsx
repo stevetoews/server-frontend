@@ -80,7 +80,7 @@ export function DashboardShell({ incidents, servers }: DashboardShellProps) {
             {incidents.length > 0 ? (
               incidents.slice(0, 3).map((incident) => (
                 <Link
-                  className="block rounded-2xl border border-border/80 bg-white/80 px-4 py-3 text-sm text-foreground transition hover:border-primary/40 hover:bg-white"
+                  className="block rounded-xl border border-border/80 bg-card/70 px-4 py-3 text-sm text-foreground transition hover:border-primary/40 hover:bg-accent/55"
                   href={`/incidents/${incident.id}`}
                   key={incident.id}
                 >
@@ -91,7 +91,7 @@ export function DashboardShell({ incidents, servers }: DashboardShellProps) {
                 </Link>
               ))
             ) : (
-              <div className="rounded-2xl border border-border/80 bg-white/80 px-4 py-3 text-sm text-foreground">
+              <div className="rounded-xl border border-border/80 bg-card/70 px-4 py-3 text-sm text-foreground">
                 No incidents recorded yet.
               </div>
             )}

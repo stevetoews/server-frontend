@@ -104,7 +104,7 @@ export function AddServerWizard() {
               <label className="space-y-2">
                 <span className="text-sm font-medium text-foreground">Server name</span>
                 <input
-                  className="h-12 rounded-2xl border border-border bg-white px-4 text-sm"
+                  className="h-12 rounded-xl border border-border bg-background/70 px-4 text-sm text-foreground"
                   onChange={(event) => setName(event.target.value)}
                   placeholder="wp-prod-01"
                   value={name}
@@ -113,7 +113,7 @@ export function AddServerWizard() {
               <label className="space-y-2">
                 <span className="text-sm font-medium text-foreground">Environment</span>
                 <select
-                  className="h-12 rounded-2xl border border-border bg-white px-4 text-sm"
+                  className="h-12 rounded-xl border border-border bg-background/70 px-4 text-sm text-foreground"
                   onChange={(event) =>
                     setEnvironment(event.target.value as "production" | "staging" | "development")
                   }
@@ -127,7 +127,7 @@ export function AddServerWizard() {
               <label className="space-y-2">
                 <span className="text-sm font-medium text-foreground">Hostname</span>
                 <input
-                  className="h-12 rounded-2xl border border-border bg-white px-4 text-sm"
+                  className="h-12 rounded-xl border border-border bg-background/70 px-4 text-sm text-foreground"
                   onChange={(event) => setHostname(event.target.value)}
                   placeholder="Optional if public IP is provided"
                   value={hostname}
@@ -136,7 +136,7 @@ export function AddServerWizard() {
               <label className="space-y-2">
                 <span className="text-sm font-medium text-foreground">Public IP</span>
                 <input
-                  className="h-12 rounded-2xl border border-border bg-white px-4 text-sm"
+                  className="h-12 rounded-xl border border-border bg-background/70 px-4 text-sm text-foreground"
                   onChange={(event) => setIpAddress(event.target.value)}
                   placeholder="203.0.113.10"
                   value={ipAddress}
@@ -145,7 +145,7 @@ export function AddServerWizard() {
               <label className="space-y-2">
                 <span className="text-sm font-medium text-foreground">SSH user</span>
                 <input
-                  className="h-12 rounded-2xl border border-border bg-white px-4 text-sm"
+                  className="h-12 rounded-xl border border-border bg-background/70 px-4 text-sm text-foreground"
                   onChange={(event) => setSshUsername(event.target.value)}
                   placeholder="root"
                   value={sshUsername}
@@ -154,7 +154,7 @@ export function AddServerWizard() {
               <label className="space-y-2">
                 <span className="text-sm font-medium text-foreground">SSH auth mode</span>
                 <select
-                  className="h-12 rounded-2xl border border-border bg-white px-4 text-sm"
+                  className="h-12 rounded-xl border border-border bg-background/70 px-4 text-sm text-foreground"
                   onChange={(event) =>
                     setSshAuthMode(event.target.value as "password" | "passwordless_agent")
                   }
@@ -169,7 +169,7 @@ export function AddServerWizard() {
                   <span className="text-sm font-medium text-foreground">Root password</span>
                   <input
                     autoComplete="current-password"
-                    className="h-12 rounded-2xl border border-border bg-white px-4 text-sm"
+                    className="h-12 rounded-xl border border-border bg-background/70 px-4 text-sm text-foreground"
                     onChange={(event) => setSshPassword(event.target.value)}
                     placeholder="Stored encrypted on the backend"
                     type="password"
@@ -182,7 +182,7 @@ export function AddServerWizard() {
             <label className="block space-y-2">
               <span className="text-sm font-medium text-foreground">Notes</span>
               <textarea
-                className="min-h-32 w-full rounded-[1.5rem] border border-border bg-white px-4 py-3 text-sm"
+                className="min-h-32 w-full rounded-xl border border-border bg-background/70 px-4 py-3 text-sm text-foreground"
                 onChange={(event) => setNotes(event.target.value)}
                 placeholder="Internal notes, maintenance windows, or escalation context"
                 value={notes}
@@ -190,7 +190,7 @@ export function AddServerWizard() {
             </label>
 
             {error ? (
-              <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+              <div className="rounded-xl border border-rose-500/30 bg-rose-500/12 px-4 py-3 text-sm text-rose-200">
                 {error}
               </div>
             ) : null}
@@ -207,12 +207,12 @@ export function AddServerWizard() {
           <h2 className="text-lg font-semibold text-foreground">Onboarding result</h2>
           {onboarding ? (
             <div className="space-y-4">
-              <div className="rounded-2xl border border-border bg-white/80 p-4 text-sm text-foreground">
+              <div className="rounded-xl border border-border bg-card/70 p-4 text-sm text-foreground">
                 SSH latency: {onboarding.ssh.latencyMs}ms. Discovery host: {onboarding.discovery.hostname}. Next step: {onboarding.nextStep}
               </div>
               <div className="grid gap-3 md:grid-cols-2">
                 {onboarding.providerMatches.map((match) => (
-                  <div className="rounded-2xl border border-border bg-white/80 p-4 text-sm text-foreground" key={`${match.providerKind}:${match.providerInstanceId}`}>
+                  <div className="rounded-xl border border-border bg-card/70 p-4 text-sm text-foreground" key={`${match.providerKind}:${match.providerInstanceId}`}>
                     {match.providerKind} candidate: {match.providerInstanceId}
                   </div>
                 ))}

@@ -4,18 +4,18 @@ export type HealthTone = "danger" | "good" | "neutral" | "warn";
 
 export function getToneClasses(tone: HealthTone) {
   if (tone === "good") {
-    return "border-emerald-200 bg-emerald-50 text-emerald-700";
+    return "border-emerald-500/30 bg-emerald-500/12 text-emerald-200";
   }
 
   if (tone === "warn") {
-    return "border-amber-200 bg-amber-50 text-amber-700";
+    return "border-amber-500/30 bg-amber-500/12 text-amber-200";
   }
 
   if (tone === "danger") {
-    return "border-rose-200 bg-rose-50 text-rose-700";
+    return "border-rose-500/30 bg-rose-500/12 text-rose-200";
   }
 
-  return "border-border bg-white text-muted-foreground";
+  return "border-border bg-card text-muted-foreground";
 }
 
 export function getCheckTone(status: HealthCheckRecord["status"]): HealthTone {

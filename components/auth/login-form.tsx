@@ -51,7 +51,7 @@ export function LoginForm() {
         <label className="block space-y-2">
           <span className="text-sm font-medium text-foreground">Email</span>
           <input
-            className="h-12 w-full rounded-2xl border border-border bg-white px-4 text-sm outline-none ring-0 transition placeholder:text-slate-400 focus:border-primary"
+            className="h-12 w-full rounded-xl border border-border bg-background/70 px-4 text-sm text-foreground outline-none ring-0 transition focus:border-primary"
             autoCapitalize="none"
             autoComplete="username"
             autoCorrect="off"
@@ -67,7 +67,7 @@ export function LoginForm() {
         <label className="block space-y-2">
           <span className="text-sm font-medium text-foreground">Password</span>
           <input
-            className="h-12 w-full rounded-2xl border border-border bg-white px-4 text-sm outline-none ring-0 transition placeholder:text-slate-400 focus:border-primary"
+            className="h-12 w-full rounded-xl border border-border bg-background/70 px-4 text-sm text-foreground outline-none ring-0 transition focus:border-primary"
             autoComplete="current-password"
             autoCapitalize="none"
             autoCorrect="off"
@@ -81,7 +81,7 @@ export function LoginForm() {
         </label>
 
         {error ? (
-          <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+          <div className="rounded-xl border border-rose-500/30 bg-rose-500/12 px-4 py-3 text-sm text-rose-200">
             {error}
           </div>
         ) : null}
@@ -91,7 +91,7 @@ export function LoginForm() {
         </Button>
       </form>
 
-      <div className="rounded-2xl border border-dashed border-border bg-accent/60 p-4 text-sm text-muted-foreground">
+      <div className="rounded-xl border border-dashed border-border bg-accent/45 p-4 text-sm text-muted-foreground">
         The backend now supports bootstrap admin login with an HTTP-only session cookie.
       </div>
     </Card>

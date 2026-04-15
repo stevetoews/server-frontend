@@ -42,7 +42,7 @@ function firstQueryValue(value?: string | string[]) {
 function ProviderBadge({ kind }: { kind?: ProviderKind }) {
   if (kind === "digitalocean") {
     return (
-      <span className="inline-flex items-center gap-2 rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-sky-700">
+      <span className="inline-flex items-center gap-2 rounded-full border border-sky-500/30 bg-sky-500/12 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-sky-200">
         <span className="flex h-5 w-5 items-center justify-center rounded-full bg-sky-600 text-white">
           <svg aria-hidden="true" fill="none" height="12" viewBox="0 0 24 24" width="12">
             <path
@@ -58,7 +58,7 @@ function ProviderBadge({ kind }: { kind?: ProviderKind }) {
 
   if (kind === "linode") {
     return (
-      <span className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">
+      <span className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/12 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-200">
         <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-600 text-white">
           <svg aria-hidden="true" fill="none" height="12" viewBox="0 0 24 24" width="12">
             <path
@@ -75,7 +75,7 @@ function ProviderBadge({ kind }: { kind?: ProviderKind }) {
   }
 
   return (
-    <span className="inline-flex items-center gap-2 rounded-full border border-border bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+    <span className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
       <span className="flex h-5 w-5 items-center justify-center rounded-full bg-muted text-muted-foreground">
         <svg aria-hidden="true" fill="none" height="12" viewBox="0 0 24 24" width="12">
           <path
@@ -163,7 +163,7 @@ export default async function ServersPage({ searchParams }: ServersPageProps) {
               className={`rounded-full border px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] transition ${
                 providerFilter === option.value
                   ? "border-primary bg-primary text-primary-foreground"
-                  : "border-border bg-white/80 text-muted-foreground hover:border-primary/40 hover:text-foreground"
+                  : "border-border bg-card/70 text-muted-foreground hover:border-primary/40 hover:text-foreground"
               }`}
               href={
                 option.value === "all" ? "/servers" : `/servers?provider=${option.value}`
@@ -221,7 +221,7 @@ export default async function ServersPage({ searchParams }: ServersPageProps) {
 
               return (
                 <Link className="group block" href={`/servers/${server.id}`} key={server.id}>
-                  <Card className="space-y-2.5 p-3.5 md:p-4 transition group-hover:border-primary/40 group-hover:bg-white">
+                  <Card className="space-y-2.5 p-3.5 md:p-4 transition group-hover:border-primary/40 group-hover:bg-accent/60">
                     <div className="flex items-start justify-between gap-2.5">
                       <div className="space-y-1">
                         <div className="flex flex-wrap items-center gap-2">

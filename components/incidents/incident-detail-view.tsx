@@ -85,13 +85,13 @@ export function IncidentDetailView({
 
       <div className="flex flex-wrap gap-2">
         <a
-          className="rounded-full border border-border bg-white/80 px-4 py-2 text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground transition hover:border-primary/40 hover:text-foreground"
+          className="rounded-full border border-border bg-card/70 px-4 py-2 text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground transition hover:border-primary/40 hover:text-foreground"
           href={`/servers/${server.id}`}
         >
           Open server
         </a>
         <a
-          className="rounded-full border border-border bg-white/80 px-4 py-2 text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground transition hover:border-primary/40 hover:text-foreground"
+          className="rounded-full border border-border bg-card/70 px-4 py-2 text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground transition hover:border-primary/40 hover:text-foreground"
           href="/incidents"
         >
           Back to queue
@@ -99,13 +99,13 @@ export function IncidentDetailView({
       </div>
 
       {statusMessage ? (
-        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+        <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/12 px-4 py-3 text-sm text-emerald-200">
           {statusMessage}
         </div>
       ) : null}
 
       {error ? (
-        <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+        <div className="rounded-xl border border-rose-500/30 bg-rose-500/12 px-4 py-3 text-sm text-rose-200">
           {error}
         </div>
       ) : null}
@@ -125,11 +125,11 @@ export function IncidentDetailView({
           </div>
 
           <div className="grid gap-3 md:grid-cols-2">
-            <div className="rounded-2xl border border-border bg-white/80 p-4 text-sm text-foreground">
+            <div className="rounded-xl border border-border bg-card/70 p-4 text-sm text-foreground">
               <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Opened</div>
               <div className="mt-2">{new Date(incident.openedAt).toLocaleString()}</div>
             </div>
-            <div className="rounded-2xl border border-border bg-white/80 p-4 text-sm text-foreground">
+            <div className="rounded-xl border border-border bg-card/70 p-4 text-sm text-foreground">
               <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">
                 Source check
               </div>
@@ -145,7 +145,7 @@ export function IncidentDetailView({
             </div>
           </div>
 
-          <div className="rounded-2xl border border-border bg-white/80 p-4 text-sm text-foreground">
+          <div className="rounded-xl border border-border bg-card/70 p-4 text-sm text-foreground">
             <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">
               Allowed remediations
             </div>
@@ -204,7 +204,7 @@ export function IncidentDetailView({
               ) : (
                 serverChecks.map((check) => (
                   <a
-                    className="block rounded-2xl border border-border bg-white/80 p-3 text-sm text-foreground transition hover:border-primary/40 hover:bg-white"
+                    className="block rounded-xl border border-border bg-card/70 p-3 text-sm text-foreground transition hover:border-primary/40 hover:bg-accent/55"
                     href={`/servers/${server.id}#recent-checks`}
                     key={check.id}
                   >
@@ -262,7 +262,7 @@ export function IncidentDetailView({
             ) : (
               remediations.map((run) => (
                 <div
-                  className="rounded-2xl border border-border bg-white/80 p-3 text-sm text-foreground"
+                  className="rounded-xl border border-border bg-card/70 p-3 text-sm text-foreground"
                   id={`remediation-${run.id}`}
                   key={run.id}
                 >
@@ -299,7 +299,7 @@ export function IncidentDetailView({
             ) : (
               audits.map((audit) => (
                 <a
-                  className="block rounded-2xl border border-border bg-white/80 p-3 text-sm text-foreground transition hover:border-primary/40 hover:bg-white"
+                  className="block rounded-xl border border-border bg-card/70 p-3 text-sm text-foreground transition hover:border-primary/40 hover:bg-accent/55"
                   href={`/servers/${server.id}?kind=audit&eventType=${encodeURIComponent(audit.eventType)}#activity-feed`}
                   id={`audit-${audit.id}`}
                   key={audit.id}

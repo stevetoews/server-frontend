@@ -633,7 +633,7 @@ export function ServerDetailView({
       <div className="flex flex-wrap gap-2">
         {SECTION_LINKS.map((link) => (
           <a
-            className="rounded-full border border-border bg-white/80 px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground transition hover:border-primary/40 hover:text-foreground"
+            className="rounded-full border border-border bg-card/70 px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground transition hover:border-primary/40 hover:text-foreground"
             href={link.href}
             key={link.href}
           >
@@ -692,7 +692,7 @@ export function ServerDetailView({
         </div>
 
         {server.notes ? (
-          <div className="rounded-xl border border-border bg-white/75 p-3 text-sm text-foreground">
+          <div className="rounded-lg border border-border bg-card/70 p-3 text-sm text-foreground">
             <div className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">Notes</div>
             <div className="mt-1.5">{server.notes}</div>
           </div>
@@ -718,49 +718,49 @@ export function ServerDetailView({
         </div>
 
         {statusMessage ? (
-          <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+          <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/12 px-3 py-2 text-sm text-emerald-200">
             {statusMessage}
           </div>
         ) : null}
 
         {error ? (
-          <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+          <div className="rounded-lg border border-rose-500/30 bg-rose-500/12 px-3 py-2 text-sm text-rose-200">
             {error}
           </div>
         ) : null}
 
         {wordops.status === "missing" ? (
-          <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-800">
+          <div className="rounded-lg border border-amber-500/30 bg-amber-500/12 px-3 py-3 text-sm text-amber-200">
             <div className="font-medium">WordOps CLI was not detected on this server.</div>
-            <div className="mt-1 text-amber-700">
+            <div className="mt-1 text-amber-200/90">
               Install WordOps on the server, then reload this page.
             </div>
           </div>
         ) : null}
 
         {wordops.status === "degraded" ? (
-          <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-800">
+          <div className="rounded-lg border border-amber-500/30 bg-amber-500/12 px-3 py-3 text-sm text-amber-200">
             <div className="font-medium">WordOps is installed, but the web stack is not ready yet.</div>
-            <div className="mt-1 text-amber-700">
+            <div className="mt-1 text-amber-200/90">
               Use <span className="font-medium">Install Web Stack</span> to provision Nginx, PHP, and SQL before creating sites.
             </div>
           </div>
         ) : null}
 
         {wordops.status === "ready" ? (
-          <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-3 text-sm text-emerald-800">
+          <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/12 px-3 py-3 text-sm text-emerald-200">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
                 <div className="font-medium">WordOps is ready for site management.</div>
-                <div className="mt-1 text-emerald-700">
+                <div className="mt-1 text-emerald-200/90">
                   Sync sites or create the first WordPress site from this card.
                 </div>
               </div>
               <div className="flex flex-wrap gap-1.5">
-                <span className="rounded-full border border-emerald-200 bg-white/80 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-emerald-800">
+                <span className="rounded-full border border-emerald-500/30 bg-card/80 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-emerald-200">
                   Live Sites {wordops.sites.length}
                 </span>
-                <span className="rounded-full border border-emerald-200 bg-white/80 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-emerald-800">
+                <span className="rounded-full border border-emerald-500/30 bg-card/80 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-emerald-200">
                   Synced Sites {sites.length}
                 </span>
               </div>
@@ -772,8 +772,8 @@ export function ServerDetailView({
           <span
             className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.18em] ${
               wordops.installed
-                ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-                : "border-amber-200 bg-amber-50 text-amber-800"
+                ? "border-emerald-500/30 bg-emerald-500/12 text-emerald-200"
+                : "border-amber-500/30 bg-amber-500/12 text-amber-200"
             }`}
           >
             <span>CLI</span>
@@ -783,8 +783,8 @@ export function ServerDetailView({
           <span
             className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.18em] ${
               wordops.stack.nginxInstalled
-                ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-                : "border-amber-200 bg-amber-50 text-amber-800"
+                ? "border-emerald-500/30 bg-emerald-500/12 text-emerald-200"
+                : "border-amber-500/30 bg-amber-500/12 text-amber-200"
             }`}
           >
             <span>Nginx</span>
@@ -793,8 +793,8 @@ export function ServerDetailView({
           <span
             className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.18em] ${
               wordops.stack.phpInstalled
-                ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-                : "border-amber-200 bg-amber-50 text-amber-800"
+                ? "border-emerald-500/30 bg-emerald-500/12 text-emerald-200"
+                : "border-amber-500/30 bg-amber-500/12 text-amber-200"
             }`}
           >
             <span>PHP</span>
@@ -803,8 +803,8 @@ export function ServerDetailView({
           <span
             className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.18em] ${
               wordops.stack.mysqlInstalled
-                ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-                : "border-amber-200 bg-amber-50 text-amber-800"
+                ? "border-emerald-500/30 bg-emerald-500/12 text-emerald-200"
+                : "border-amber-500/30 bg-amber-500/12 text-amber-200"
             }`}
           >
             <span>SQL</span>
@@ -813,8 +813,8 @@ export function ServerDetailView({
           <span
             className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.18em] ${
               wordops.stack.wpCliInstalled
-                ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-                : "border-amber-200 bg-amber-50 text-amber-800"
+                ? "border-emerald-500/30 bg-emerald-500/12 text-emerald-200"
+                : "border-amber-500/30 bg-amber-500/12 text-amber-200"
             }`}
           >
             <span>WP-CLI</span>
@@ -832,7 +832,7 @@ export function ServerDetailView({
           </Button>
         </div>
 
-        <form className="space-y-3 rounded-xl border border-border bg-white/75 p-3" onSubmit={handleCreateWordopsSite}>
+        <form className="space-y-3 rounded-lg border border-border bg-card/70 p-3" onSubmit={handleCreateWordopsSite}>
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
               <div className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
@@ -851,7 +851,7 @@ export function ServerDetailView({
             <label className="space-y-1">
               <span className="text-[11px] font-medium text-foreground">Domain</span>
               <input
-                className="h-11 w-full rounded-xl border border-border bg-white px-3 text-sm"
+                className="h-11 w-full rounded-lg border border-border bg-background/70 px-3 text-sm text-foreground"
                 onChange={(event) => setSiteForm((current) => ({ ...current, domain: event.target.value }))}
                 placeholder="example.com"
                 value={siteForm.domain}
@@ -860,7 +860,7 @@ export function ServerDetailView({
             <label className="space-y-1">
               <span className="text-[11px] font-medium text-foreground">Cache Profile</span>
               <select
-                className="h-11 w-full rounded-xl border border-border bg-white px-3 text-sm"
+                className="h-11 w-full rounded-lg border border-border bg-background/70 px-3 text-sm text-foreground"
                 onChange={(event) =>
                   setSiteForm((current) => ({
                     ...current,
@@ -880,7 +880,7 @@ export function ServerDetailView({
             <label className="space-y-1">
               <span className="text-[11px] font-medium text-foreground">PHP</span>
               <select
-                className="h-11 w-full rounded-xl border border-border bg-white px-3 text-sm"
+                className="h-11 w-full rounded-lg border border-border bg-background/70 px-3 text-sm text-foreground"
                 onChange={(event) =>
                   setSiteForm((current) => ({
                     ...current,
@@ -900,7 +900,7 @@ export function ServerDetailView({
             <label className="space-y-1">
               <span className="text-[11px] font-medium text-foreground">Admin User</span>
               <input
-                className="h-11 w-full rounded-xl border border-border bg-white px-3 text-sm"
+                className="h-11 w-full rounded-lg border border-border bg-background/70 px-3 text-sm text-foreground"
                 onChange={(event) => setSiteForm((current) => ({ ...current, adminUser: event.target.value }))}
                 placeholder="admin"
                 value={siteForm.adminUser ?? ""}
@@ -909,7 +909,7 @@ export function ServerDetailView({
             <label className="space-y-1">
               <span className="text-[11px] font-medium text-foreground">Admin Email</span>
               <input
-                className="h-11 w-full rounded-xl border border-border bg-white px-3 text-sm"
+                className="h-11 w-full rounded-lg border border-border bg-background/70 px-3 text-sm text-foreground"
                 onChange={(event) => setSiteForm((current) => ({ ...current, adminEmail: event.target.value }))}
                 placeholder="admin@example.com"
                 value={siteForm.adminEmail ?? ""}
@@ -918,7 +918,7 @@ export function ServerDetailView({
             <label className="space-y-1">
               <span className="text-[11px] font-medium text-foreground">Admin Password</span>
               <input
-                className="h-11 w-full rounded-xl border border-border bg-white px-3 text-sm"
+                className="h-11 w-full rounded-lg border border-border bg-background/70 px-3 text-sm text-foreground"
                 onChange={(event) => setSiteForm((current) => ({ ...current, adminPassword: event.target.value }))}
                 placeholder="Optional"
                 type="password"
@@ -1004,7 +1004,7 @@ export function ServerDetailView({
             </div>
             <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
               {displayedSites.map((site) => (
-                <div className="rounded-xl border border-border bg-white/75 p-3 text-sm text-foreground" key={`${site.domain}:${site.sitePath}`}>
+                <div className="rounded-lg border border-border bg-card/70 p-3 text-sm text-foreground" key={`${site.domain}:${site.sitePath}`}>
                   <div className="flex items-start justify-between gap-2">
                     <div>
                       <div className="font-medium">{site.domain}</div>
@@ -1026,10 +1026,10 @@ export function ServerDetailView({
                   </div>
                   <div className="mt-2 flex flex-wrap gap-1.5 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
                     {site.phpVersion ? (
-                      <span className="rounded-full border border-border px-2 py-0.5">PHP {site.phpVersion}</span>
+                        <span className="rounded-full border border-border bg-background/40 px-2 py-0.5">PHP {site.phpVersion}</span>
                     ) : null}
                     {site.cacheType ? (
-                      <span className="rounded-full border border-border px-2 py-0.5">{site.cacheType}</span>
+                        <span className="rounded-full border border-border bg-background/40 px-2 py-0.5">{site.cacheType}</span>
                     ) : null}
                   </div>
                   <div className="mt-3 flex flex-wrap gap-2">
@@ -1122,7 +1122,7 @@ export function ServerDetailView({
                         <div className="text-muted-foreground">{check.summary}</div>
                       </div>
                       {incidentHref ? (
-                        <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] uppercase tracking-[0.24em] text-amber-700">
+                        <span className="rounded-full border border-amber-500/30 bg-amber-500/12 px-2 py-0.5 text-[11px] uppercase tracking-[0.24em] text-amber-200">
                           Active incident
                         </span>
                       ) : null}
@@ -1141,7 +1141,7 @@ export function ServerDetailView({
                 if (incidentHref) {
                   return (
                     <a
-                      className="block rounded-xl border border-border bg-white/75 p-2.5 text-sm text-foreground transition hover:border-primary/40 hover:bg-white"
+                      className="block rounded-lg border border-border bg-card/70 p-2.5 text-sm text-foreground transition hover:border-primary/40 hover:bg-accent/55"
                       href={incidentHref}
                       key={check.id}
                     >
@@ -1152,7 +1152,7 @@ export function ServerDetailView({
 
                 return (
                   <div
-                    className="rounded-xl border border-border bg-white/75 p-2.5 text-sm text-foreground"
+                    className="rounded-lg border border-border bg-card/70 p-2.5 text-sm text-foreground"
                     key={check.id}
                   >
                     {content}
@@ -1224,7 +1224,7 @@ export function ServerDetailView({
           ) : (
             incidents.map((incident) => (
               <div
-                className="rounded-xl border border-border bg-white/75 p-2.5 text-sm text-foreground"
+                className="rounded-lg border border-border bg-card/70 p-2.5 text-sm text-foreground"
                 id={`incident-${incident.id}`}
                 key={incident.id}
               >
@@ -1264,7 +1264,7 @@ export function ServerDetailView({
                         </Button>
                       ))
                     ) : (
-                      <div className="text-xs text-amber-700">
+                      <div className="text-xs text-amber-200">
                         {incident.remediation.reasons[0] ??
                           "No allowlisted remediations are available for this incident."}
                       </div>
@@ -1272,7 +1272,7 @@ export function ServerDetailView({
                   </div>
                 ) : null}
                 {incident.status === "remediation_pending" ? (
-                  <div className="mt-2 text-xs text-amber-700">
+                  <div className="mt-2 text-xs text-amber-200">
                     Remediation completed. Waiting for a healthy follow-up check before resolution.
                   </div>
                 ) : null}
@@ -1337,7 +1337,7 @@ export function ServerDetailView({
           ) : (
             runs.map((run) => (
               <div
-                className="rounded-xl border border-border bg-white/75 p-2.5 text-sm text-foreground"
+                className="rounded-lg border border-border bg-card/70 p-2.5 text-sm text-foreground"
                 id={`remediation-${run.id}`}
                 key={run.id}
               >
@@ -1427,11 +1427,11 @@ export function ServerDetailView({
           </Button>
         </div>
 
-        <div className="grid gap-2 rounded-xl border border-border bg-white/70 p-3 lg:grid-cols-[160px_minmax(0,1fr)_auto_auto]">
+        <div className="grid gap-2 rounded-lg border border-border bg-card/70 p-3 lg:grid-cols-[160px_minmax(0,1fr)_auto_auto]">
           <label className="space-y-1 text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">
             Kind
             <select
-              className="h-10 w-full rounded-xl border border-border bg-white px-3 text-sm font-normal uppercase tracking-normal text-foreground"
+              className="h-10 w-full rounded-lg border border-border bg-background/70 px-3 text-sm font-normal uppercase tracking-normal text-foreground"
               onChange={(event) => setActivityKindFilter(event.target.value as ActivityKindFilter)}
               value={activityKindFilter}
             >
@@ -1446,7 +1446,7 @@ export function ServerDetailView({
           <label className="space-y-1 text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">
             Event type
             <input
-              className="h-10 w-full rounded-xl border border-border bg-white px-3 text-sm text-foreground placeholder:text-muted-foreground"
+              className="h-10 w-full rounded-lg border border-border bg-background/70 px-3 text-sm text-foreground placeholder:text-muted-foreground"
               onChange={(event) => setActivityEventType(event.target.value)}
               placeholder="e.g. restart.nginx"
               value={activityEventType}
@@ -1476,7 +1476,7 @@ export function ServerDetailView({
           ) : (
             activity.map((entry) => (
               <a
-                className="block rounded-xl border border-border bg-white/75 p-2.5 text-sm text-foreground transition hover:border-primary/40 hover:bg-white"
+                className="block rounded-lg border border-border bg-card/70 p-2.5 text-sm text-foreground transition hover:border-primary/40 hover:bg-accent/55"
                 href={getActivitySourceHref(entry)}
                 id={`activity-${entry.id}`}
                 key={entry.id}

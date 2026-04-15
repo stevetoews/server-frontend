@@ -20,27 +20,22 @@ export function LinodeStandardInfo({ server }: LinodeStandardInfoProps) {
   return (
     <div className="space-y-2.5">
       <div className="flex flex-wrap items-start justify-between gap-2">
-        <div>
-          <h3 className="text-sm font-semibold text-foreground">Linode inventory</h3>
-          <p className="mt-0.5 text-[11px] text-muted-foreground">
-            Pulled from Linode plus the latest disk-usage probe.
-          </p>
-        </div>
+        <div />
         <div className="flex flex-wrap items-center justify-end gap-1.5">
-          <div className="rounded-full border border-border bg-white/80 px-2.5 py-1 text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+          <div className="rounded-full border border-border bg-card/70 px-2.5 py-1 text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
             {snapshot.summary}
           </div>
           {snapshot.tags.length > 0 ? (
             snapshot.tags.map((tag) => (
               <div
-                className="rounded-full border border-border bg-white/70 px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-muted-foreground"
+                className="rounded-full border border-border bg-card/60 px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-muted-foreground"
                 key={tag}
               >
                 {tag}
               </div>
             ))
           ) : (
-            <div className="rounded-full border border-border bg-white/70 px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+            <div className="rounded-full border border-border bg-card/60 px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
               No tags
             </div>
           )}

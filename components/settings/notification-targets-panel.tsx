@@ -253,7 +253,7 @@ export function NotificationTargetsPanel() {
       </div>
 
       {error ? (
-        <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+        <div className="rounded-xl border border-rose-500/30 bg-rose-500/12 px-4 py-3 text-sm text-rose-200">
           {error}
         </div>
       ) : null}
@@ -270,7 +270,7 @@ export function NotificationTargetsPanel() {
 
             <div className="space-y-3">
               <input
-                className="h-11 w-full rounded-2xl border border-border bg-white px-4 text-sm"
+                className="h-11 w-full rounded-xl border border-border bg-background/70 px-4 text-sm text-foreground"
                 onChange={(event) =>
                   setCreateForm((current) => ({ ...current, label: event.target.value }))
                 }
@@ -278,7 +278,7 @@ export function NotificationTargetsPanel() {
                 value={createForm.label}
               />
               <input
-                className="h-11 w-full rounded-2xl border border-border bg-white px-4 text-sm"
+                className="h-11 w-full rounded-xl border border-border bg-background/70 px-4 text-sm text-foreground"
                 onChange={(event) =>
                   setCreateForm((current) => ({ ...current, address: event.target.value }))
                 }
@@ -304,7 +304,7 @@ export function NotificationTargetsPanel() {
 
           <div className="space-y-2">
             {targets.length === 0 ? (
-              <div className="rounded-2xl border border-border bg-white/80 p-4 text-sm text-muted-foreground">
+              <div className="rounded-xl border border-border bg-card/70 p-4 text-sm text-muted-foreground">
                 No notification targets are configured.
               </div>
             ) : (
@@ -314,10 +314,10 @@ export function NotificationTargetsPanel() {
                 return (
                   <button
                     className={[
-                      "w-full rounded-2xl border px-4 py-4 text-left transition",
+                      "w-full rounded-xl border px-4 py-4 text-left transition",
                       isActive
-                        ? "border-primary bg-primary/5 shadow-[0_16px_40px_-26px_rgba(18,61,54,0.45)]"
-                        : "border-border bg-white/80 hover:border-primary/40 hover:bg-accent/40",
+                        ? "border-primary bg-primary/10 shadow-[0_16px_40px_-26px_rgba(0,0,0,0.6)]"
+                        : "border-border bg-card/70 hover:border-primary/40 hover:bg-accent/40",
                     ].join(" ")}
                     key={target.id}
                     onClick={() => {
@@ -356,14 +356,14 @@ export function NotificationTargetsPanel() {
             {selectedTarget ? (
               <div className="space-y-3">
                 <input
-                  className="h-11 w-full rounded-2xl border border-border bg-white px-4 text-sm"
+                  className="h-11 w-full rounded-xl border border-border bg-background/70 px-4 text-sm text-foreground"
                   onChange={(event) =>
                     setEditForm((current) => ({ ...current, label: event.target.value }))
                   }
                   value={editForm.label}
                 />
                 <input
-                  className="h-11 w-full rounded-2xl border border-border bg-white px-4 text-sm"
+                  className="h-11 w-full rounded-xl border border-border bg-background/70 px-4 text-sm text-foreground"
                   onChange={(event) =>
                     setEditForm((current) => ({ ...current, address: event.target.value }))
                   }
@@ -397,7 +397,7 @@ export function NotificationTargetsPanel() {
             )}
           </Card>
 
-          <div className="rounded-2xl border border-border bg-white/80 p-4">
+          <div className="rounded-xl border border-border bg-card/70 p-4">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">
@@ -477,13 +477,13 @@ export function NotificationTargetsPanel() {
 
           <div className="space-y-3">
             {deliveries.length === 0 ? (
-              <div className="rounded-2xl border border-border bg-white/80 p-4 text-sm text-muted-foreground">
+              <div className="rounded-xl border border-border bg-card/70 p-4 text-sm text-muted-foreground">
                 No deliveries loaded for this target yet.
               </div>
             ) : (
               deliveries.map((delivery) => (
                 <div
-                  className="rounded-2xl border border-border bg-white/80 p-4 text-sm text-foreground"
+                  className="rounded-xl border border-border bg-card/70 p-4 text-sm text-foreground"
                   key={delivery.id}
                 >
                   <div className="flex flex-wrap items-start justify-between gap-3">
