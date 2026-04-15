@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
@@ -16,10 +16,13 @@ import {
   runServerChecks,
   type HealthCheckRecord,
   type IncidentRecord,
+  type PaginationMeta,
   type RemediationRunRecord,
   type ServerRecord,
   type SpinupwpServerCandidate,
 } from "@/lib/api";
+
+const DETAIL_PAGE_SIZE = 5;
 
 interface ServerDetailViewProps {
   server: ServerRecord;
@@ -35,8 +38,14 @@ export function ServerDetailView({ server }: ServerDetailViewProps) {
     server.spinupwpServerId ?? "",
   );
   const [checks, setChecks] = useState<HealthCheckRecord[]>([]);
+  const [checksPagination, setChecksPagination] = useState<PaginationMeta | null>(null);
+  const [checksOffset, setChecksOffset] = useState(0);
   const [incidents, setIncidents] = useState<IncidentRecord[]>([]);
+  const [incidentsPagination, setIncidentsPagination] = useState<PaginationMeta | null>(null);
+  const [incidentsOffset, setIncidentsOffset] = useState(0);
   const [runs, setRuns] = useState<RemediationRunRecord[]>([]);
+  const [runsPagination, setRunsPagination] = useState<PaginationMeta | null>(null);
+  const [runsOffset, setRunsOffset] = useState(0);
 
   function handleConfirmProviderMatch() {
     if (!server.providerMatch) {
@@ -116,19 +125,68 @@ export function ServerDetailView({ server }: ServerDetailViewProps) {
     });
   }
 
-  function handleLoadChecks() {
+  function loadChecks(offset = checksOffset) {
     setError(null);
     setStatusMessage(null);
 
     startTransition(async () => {
       try {
-        const payload = await getServerChecks(server.id);
+        const payload = await getServerChecks(server.id, {
+          limit: DETAIL_PAGE_SIZE,
+          offset,
+        });
         setChecks(payload.data.checks);
+        setChecksPagination(payload.data.pagination ?? null);
+        setChecksOffset(offset);
       } catch (checkError) {
         setError(
           checkError instanceof Error
             ? checkError.message
             : "Unable to load recent checks",
+        );
+      }
+    });
+  }
+
+  function loadIncidents(offset = incidentsOffset) {
+    setError(null);
+    setStatusMessage(null);
+
+    startTransition(async () => {
+      try {
+        const payload = await getServerIncidents(server.id, {
+          limit: DETAIL_PAGE_SIZE,
+          offset,
+        });
+        setIncidents(payload.data.incidents);
+        setIncidentsPagination(payload.data.pagination ?? null);
+        setIncidentsOffset(offset);
+      } catch (incidentError) {
+        setError(
+          incidentError instanceof Error
+            ? incidentError.message
+            : "Unable to load incidents",
+        );
+      }
+    });
+  }
+
+  function loadRuns(offset = runsOffset) {
+    setError(null);
+    setStatusMessage(null);
+
+    startTransition(async () => {
+      try {
+        const payload = await getServerRemediations(server.id, {
+          limit: DETAIL_PAGE_SIZE,
+          offset,
+        });
+        setRuns(payload.data.runs);
+        setRunsPagination(payload.data.pagination ?? null);
+        setRunsOffset(offset);
+      } catch (runError) {
+        setError(
+          runError instanceof Error ? runError.message : "Unable to load remediation runs",
         );
       }
     });
@@ -142,49 +200,22 @@ export function ServerDetailView({ server }: ServerDetailViewProps) {
       try {
         const payload = await runServerChecks(server.id);
         setChecks(payload.data.checks);
+        setChecksPagination(null);
+        setChecksOffset(0);
         setStatusMessage("Deterministic checks ran successfully for this server.");
 
-        const incidentsPayload = await getServerIncidents(server.id);
+        const incidentsPayload = await getServerIncidents(server.id, {
+          limit: DETAIL_PAGE_SIZE,
+          offset: 0,
+        });
         setIncidents(incidentsPayload.data.incidents);
+        setIncidentsPagination(incidentsPayload.data.pagination ?? null);
+        setIncidentsOffset(0);
       } catch (checkError) {
         setError(
           checkError instanceof Error
             ? checkError.message
             : "Unable to run deterministic checks",
-        );
-      }
-    });
-  }
-
-  function handleLoadRemediations() {
-    setError(null);
-    setStatusMessage(null);
-
-    startTransition(async () => {
-      try {
-        const payload = await getServerRemediations(server.id);
-        setRuns(payload.data.runs);
-      } catch (runError) {
-        setError(
-          runError instanceof Error ? runError.message : "Unable to load remediation runs",
-        );
-      }
-    });
-  }
-
-  function handleLoadIncidents() {
-    setError(null);
-    setStatusMessage(null);
-
-    startTransition(async () => {
-      try {
-        const payload = await getServerIncidents(server.id);
-        setIncidents(payload.data.incidents);
-      } catch (incidentError) {
-        setError(
-          incidentError instanceof Error
-            ? incidentError.message
-            : "Unable to load incidents",
         );
       }
     });
@@ -217,6 +248,14 @@ export function ServerDetailView({ server }: ServerDetailViewProps) {
     server.onboardingStatus !== "provider_matched";
   const canLoadSpinupwp = server.onboardingStatus === "active";
   const canMapSpinupwp = canLoadSpinupwp && Boolean(selectedSpinupwpServerId);
+
+  useEffect(() => {
+    loadChecks(0);
+    loadIncidents(0);
+    loadRuns(0);
+    // Load the default server detail slices on entry.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [server.id]);
 
   return (
     <div className="space-y-6">
@@ -368,13 +407,31 @@ export function ServerDetailView({ server }: ServerDetailViewProps) {
           </ul>
 
           <div className="border-t border-border pt-3">
-            <div className="flex flex-wrap gap-2">
-              <Button disabled={isPending} onClick={handleLoadChecks} type="button" variant="secondary">
-                Load Recent Checks
-              </Button>
-              <Button disabled={isPending || !server.spinupwpServerId} onClick={handleRunChecks} type="button">
-                Run Checks Now
-              </Button>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">
+                  Recent Checks
+                </div>
+                <div className="mt-1 text-sm text-muted-foreground">
+                  {checksPagination ? (
+                    <span>
+                      Showing {checksPagination.offset + 1}-{checksPagination.offset + checksPagination.returned} of{" "}
+                      {checksPagination.total}
+                    </span>
+                  ) : (
+                    <span>Latest checks for this server</span>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                <Button disabled={isPending} onClick={() => loadChecks(0)} type="button" variant="secondary">
+                  Refresh
+                </Button>
+                <Button disabled={isPending || !server.spinupwpServerId} onClick={handleRunChecks} type="button">
+                  Run Checks Now
+                </Button>
+              </div>
             </div>
 
             <div className="mt-4 space-y-2">
@@ -394,17 +451,60 @@ export function ServerDetailView({ server }: ServerDetailViewProps) {
                 ))
               )}
             </div>
+
+            {checksPagination ? (
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+                <div>
+                  <span>{checksPagination.hasMore ? "More checks available" : "End of checks"}</span>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    disabled={isPending || checksOffset === 0}
+                    onClick={() => loadChecks(Math.max(0, checksOffset - DETAIL_PAGE_SIZE))}
+                    type="button"
+                    variant="secondary"
+                  >
+                    Previous
+                  </Button>
+                  <Button
+                    disabled={isPending || !checksPagination.hasMore}
+                    onClick={() => loadChecks(checksOffset + DETAIL_PAGE_SIZE)}
+                    type="button"
+                    variant="secondary"
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
+            ) : null}
           </div>
 
           <div className="border-t border-border pt-3">
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">
+                  Incidents
+                </div>
+                <div className="mt-1 text-sm text-muted-foreground">
+                  {incidentsPagination ? (
+                    <span>
+                      Showing {incidentsPagination.offset + 1}-
+                      {incidentsPagination.offset + incidentsPagination.returned} of{" "}
+                      {incidentsPagination.total}
+                    </span>
+                  ) : (
+                    <span>Latest incidents for this server</span>
+                  )}
+                </div>
+              </div>
+
               <Button
                 disabled={isPending}
-                onClick={handleLoadIncidents}
+                onClick={() => loadIncidents(0)}
                 type="button"
                 variant="secondary"
               >
-                Load Incidents
+                Refresh
               </Button>
             </div>
 
@@ -453,12 +553,54 @@ export function ServerDetailView({ server }: ServerDetailViewProps) {
                 ))
               )}
             </div>
+
+            {incidentsPagination ? (
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+                <div>
+                  <span>{incidentsPagination.hasMore ? "More incidents available" : "End of incidents"}</span>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    disabled={isPending || incidentsOffset === 0}
+                    onClick={() => loadIncidents(Math.max(0, incidentsOffset - DETAIL_PAGE_SIZE))}
+                    type="button"
+                    variant="secondary"
+                  >
+                    Previous
+                  </Button>
+                  <Button
+                    disabled={isPending || !incidentsPagination.hasMore}
+                    onClick={() => loadIncidents(incidentsOffset + DETAIL_PAGE_SIZE)}
+                    type="button"
+                    variant="secondary"
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
+            ) : null}
           </div>
 
           <div className="border-t border-border pt-3">
-            <div className="flex flex-wrap gap-2">
-              <Button disabled={isPending} onClick={handleLoadRemediations} type="button" variant="secondary">
-                Load Remediation Runs
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">
+                  Remediation Runs
+                </div>
+                <div className="mt-1 text-sm text-muted-foreground">
+                  {runsPagination ? (
+                    <span>
+                      Showing {runsPagination.offset + 1}-{runsPagination.offset + runsPagination.returned} of{" "}
+                      {runsPagination.total}
+                    </span>
+                  ) : (
+                    <span>Latest remediation runs for this server</span>
+                  )}
+                </div>
+              </div>
+
+              <Button disabled={isPending} onClick={() => loadRuns(0)} type="button" variant="secondary">
+                Refresh
               </Button>
             </div>
 
@@ -481,6 +623,32 @@ export function ServerDetailView({ server }: ServerDetailViewProps) {
                 ))
               )}
             </div>
+
+            {runsPagination ? (
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+                <div>
+                  <span>{runsPagination.hasMore ? "More runs available" : "End of remediation history"}</span>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    disabled={isPending || runsOffset === 0}
+                    onClick={() => loadRuns(Math.max(0, runsOffset - DETAIL_PAGE_SIZE))}
+                    type="button"
+                    variant="secondary"
+                  >
+                    Previous
+                  </Button>
+                  <Button
+                    disabled={isPending || !runsPagination.hasMore}
+                    onClick={() => loadRuns(runsOffset + DETAIL_PAGE_SIZE)}
+                    type="button"
+                    variant="secondary"
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
+            ) : null}
           </div>
         </Card>
       </div>
