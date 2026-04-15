@@ -495,6 +495,89 @@ export async function getNotificationTargets(
   }>;
 }
 
+export async function createNotificationTarget(input: {
+  address: string;
+  channel: "email";
+  enabled: boolean;
+  label: string;
+}) {
+  const env = getClientEnv();
+  const response = await fetch(`${env.NEXT_PUBLIC_API_BASE_URL}/notifications/targets`, {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      "content-type": "application/json",
+    },
+    body: JSON.stringify(input),
+  });
+
+  const payload = await response.json();
+
+  if (!response.ok) {
+    throw new Error(payload?.error?.message ?? "Unable to create notification target");
+  }
+
+  return payload as ApiEnvelope<{
+    target: NotificationTargetRecord;
+  }>;
+}
+
+export async function updateNotificationTarget(input: {
+  address?: string;
+  enabled?: boolean;
+  id: string;
+  label?: string;
+}) {
+  const env = getClientEnv();
+  const response = await fetch(`${env.NEXT_PUBLIC_API_BASE_URL}/notifications/targets/${input.id}`, {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      ...(input.address !== undefined ? { address: input.address } : {}),
+      ...(input.enabled !== undefined ? { enabled: input.enabled } : {}),
+      ...(input.label !== undefined ? { label: input.label } : {}),
+    }),
+  });
+
+  const payload = await response.json();
+
+  if (!response.ok) {
+    throw new Error(payload?.error?.message ?? "Unable to update notification target");
+  }
+
+  return payload as ApiEnvelope<{
+    target: NotificationTargetRecord;
+  }>;
+}
+
+export async function deleteNotificationTarget(targetId: string) {
+  const env = getClientEnv();
+  const response = await fetch(
+    `${env.NEXT_PUBLIC_API_BASE_URL}/notifications/targets/${targetId}/delete`,
+    {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        "content-type": "application/json",
+      },
+    },
+  );
+
+  const payload = await response.json();
+
+  if (!response.ok) {
+    throw new Error(payload?.error?.message ?? "Unable to delete notification target");
+  }
+
+  return payload as ApiEnvelope<{
+    deleted: boolean;
+    targetId: string;
+  }>;
+}
+
 export async function getNotificationTargetDeliveries(
   targetId: string,
   options?: ListOptions & { eventType?: string },
