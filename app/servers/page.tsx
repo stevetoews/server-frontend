@@ -86,6 +86,7 @@ export default async function ServersPage() {
                 (incident) => incident.status === "remediation_pending",
               ).length;
               const latestIncident = serverIncidents[0];
+              const lastActivityAt = latestIncident?.openedAt ?? server.updatedAt;
 
               return (
                 <Link className="group block" href={`/servers/${server.id}`} key={server.id}>
@@ -125,16 +126,24 @@ export default async function ServersPage() {
                       </div>
                       <div className="rounded-2xl border border-border/80 bg-white/80 p-3">
                         <div className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
-                          Latest
+                          Last activity
                         </div>
-                        <div className="mt-1 line-clamp-2 text-sm font-medium text-foreground">
-                          {latestIncident ? latestIncident.title : "No incidents yet"}
+                        <div className="mt-1 text-sm font-medium text-foreground">
+                          {new Date(lastActivityAt).toLocaleString()}
                         </div>
                       </div>
                     </div>
 
-                    <div className="text-sm text-muted-foreground">
-                      {server.notes ?? "No server notes recorded."}
+                    <div className="space-y-1 text-sm text-muted-foreground">
+                      <div className="font-medium text-foreground">
+                        {latestIncident ? latestIncident.title : "No incidents yet"}
+                      </div>
+                      <div>
+                        {latestIncident
+                          ? `Latest incident opened ${new Date(latestIncident.openedAt).toLocaleString()}`
+                          : `Last updated ${new Date(server.updatedAt).toLocaleString()}`}
+                      </div>
+                      <div>{server.notes ?? "No server notes recorded."}</div>
                     </div>
                   </Card>
                 </Link>
