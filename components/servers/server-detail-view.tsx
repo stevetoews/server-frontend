@@ -32,7 +32,7 @@ const ACTIVITY_KIND_OPTIONS = [
   { label: "Remediations", value: "remediation" },
 ] as const;
 const SECTION_LINKS = [
-  { href: "#onboarding-state", label: "Onboarding" },
+  { href: "#server-information", label: "Server Info" },
   { href: "#recent-checks", label: "Checks" },
   { href: "#server-incidents", label: "Incidents" },
   { href: "#remediation-runs", label: "Remediations" },
@@ -123,6 +123,11 @@ export function ServerDetailView({
     useState(initialActivityEventType);
   const [activityOffset, setActivityOffset] = useState(0);
   const latestActiveIncident = incidents.find((incident) => incident.status !== "resolved");
+  const providerLabel = server.providerMatch
+    ? server.providerMatch.providerKind === "linode"
+      ? "Akamai"
+      : "DigitalOcean"
+    : "Unmatched";
 
   function handleConfirmProviderMatch() {
     if (!server.providerMatch) {
@@ -437,70 +442,29 @@ export function ServerDetailView({
         ))}
       </div>
 
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card className="space-y-2">
-          <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Open</div>
-          <div className="text-2xl font-semibold text-foreground">
-            {incidents.filter((incident) => incident.status === "open").length}
-          </div>
-          <p className="text-sm text-muted-foreground">Incidents ready for remediation.</p>
-        </Card>
-        <Card className="space-y-2">
-          <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">
-            Remediation Pending
-          </div>
-          <div className="text-2xl font-semibold text-foreground">
-            {incidents.filter((incident) => incident.status === "remediation_pending").length}
-          </div>
-          <p className="text-sm text-muted-foreground">Waiting on follow-up checks.</p>
-        </Card>
-        <Card className="space-y-2">
-          <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Resolved</div>
-          <div className="text-2xl font-semibold text-foreground">
-            {incidents.filter((incident) => incident.status === "resolved").length}
-          </div>
-          <p className="text-sm text-muted-foreground">Closed records for this server.</p>
-        </Card>
-        <Card className="space-y-2">
-          <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">
-            Latest Active
-          </div>
-          {latestActiveIncident ? (
-            <a
-              className="text-lg font-semibold text-foreground transition hover:text-primary"
-              href={`/incidents/${latestActiveIncident.id}`}
-            >
-              {latestActiveIncident.title}
-            </a>
-          ) : (
-            <div className="text-lg font-semibold text-foreground">None</div>
-          )}
-          <p className="text-sm text-muted-foreground">
-            {incidentsPagination ? `Loaded ${incidentsPagination.returned} recent records.` : "Recent server incident context."}
-          </p>
-        </Card>
-      </div>
-
-      <div className="grid gap-4 xl:grid-cols-3">
-        <Card className="space-y-4 xl:col-span-2">
+      <div className="grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
+        <Card id="server-information" className="space-y-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <h2 className="text-lg font-semibold text-foreground">Onboarding state</h2>
+              <h2 className="text-lg font-semibold text-foreground">Server information</h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                Confirm the provider match to unlock activation and the next SpinupWP mapping step.
+                Basic server identity first, then the onboarding gates below it.
               </p>
             </div>
-
-            <Button
-              disabled={!canConfirmProvider || isPending}
-              onClick={handleConfirmProviderMatch}
-              type="button"
-            >
-              {isPending ? "Confirming..." : "Confirm Provider Match"}
-            </Button>
+            <div className="rounded-full border border-border px-3 py-1 text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
+              {providerLabel}
+            </div>
           </div>
 
           <div className="grid gap-3 md:grid-cols-2">
+            <div className="rounded-2xl border border-border bg-white/80 p-4 text-sm text-foreground">
+              <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Identity</div>
+              <div className="mt-2 font-medium">{server.name}</div>
+              <div className="mt-1 text-muted-foreground">{server.hostname}</div>
+              <div className="mt-1 text-muted-foreground">
+                {server.environment} • {server.onboardingStatus}
+              </div>
+            </div>
             <div className="rounded-2xl border border-border bg-white/80 p-4 text-sm text-foreground">
               <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">SSH</div>
               <div className="mt-2">
@@ -509,21 +473,43 @@ export function ServerDetailView({
               <div className="mt-1 text-muted-foreground">Mode: {server.sshAuthMode}</div>
             </div>
             <div className="rounded-2xl border border-border bg-white/80 p-4 text-sm text-foreground">
-              <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">
-                Provider Gate
-              </div>
+              <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Provider</div>
               <div className="mt-2">
                 {server.providerMatch
-                  ? `${server.providerMatch.providerKind} matched`
+                  ? `${providerLabel} matched`
                   : "Awaiting provider confirmation"}
               </div>
               <div className="mt-1 text-muted-foreground">
                 {server.providerMatch
                   ? server.providerMatch.providerInstanceId
-                  : "SpinupWP mapping stays disabled until this is confirmed."}
+                  : "Activation stays blocked until the provider is confirmed."}
+              </div>
+            </div>
+            <div className="rounded-2xl border border-border bg-white/80 p-4 text-sm text-foreground">
+              <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Timeline</div>
+              <div className="mt-2 text-foreground">
+                Created {new Date(server.createdAt).toLocaleString()}
+              </div>
+              <div className="mt-1 text-muted-foreground">
+                Updated {new Date(server.updatedAt).toLocaleString()}
+              </div>
+              <div className="mt-1 text-muted-foreground">
+                Latest activity{" "}
+                {latestActiveIncident
+                  ? `incident ${new Date(latestActiveIncident.openedAt).toLocaleString()}`
+                  : `server update ${new Date(server.updatedAt).toLocaleString()}`}
               </div>
             </div>
           </div>
+
+          {server.notes ? (
+            <div className="rounded-2xl border border-border bg-white/80 p-4 text-sm text-foreground">
+              <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">
+                Notes
+              </div>
+              <div className="mt-2">{server.notes}</div>
+            </div>
+          ) : null}
 
           {statusMessage ? (
             <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
@@ -537,23 +523,11 @@ export function ServerDetailView({
             </div>
           ) : null}
 
-          {server.notes ? (
-            <div className="rounded-2xl border border-border bg-white/80 p-4 text-sm text-foreground">
-              <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">
-                Notes
-              </div>
-              <div className="mt-2">{server.notes}</div>
-            </div>
-          ) : null}
-
-          <div
-            id="onboarding-state"
-            className="rounded-2xl border border-border bg-white/80 p-4 text-sm text-foreground"
-          >
+          <div id="onboarding-state" className="space-y-3 rounded-2xl border border-border bg-white/80 p-4 text-sm text-foreground">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">
-                  SpinupWP Mapping
+                  Onboarding
                 </div>
                 <div className="mt-2">
                   {server.spinupwpServerId
@@ -564,28 +538,28 @@ export function ServerDetailView({
                   This unlocks only after the primary provider is confirmed and the server is active.
                 </div>
               </div>
+            </div>
 
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  disabled={!canLoadSpinupwp || isPending}
-                  onClick={handleLoadSpinupwpCandidates}
-                  type="button"
-                  variant="secondary"
-                >
-                  Load SpinupWP Servers
-                </Button>
-                <Button
-                  disabled={!canMapSpinupwp || isPending}
-                  onClick={handleMapSpinupwpServer}
-                  type="button"
-                >
-                  Map SpinupWP Server
-                </Button>
-              </div>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                disabled={!canConfirmProvider || isPending}
+                onClick={handleConfirmProviderMatch}
+                type="button"
+              >
+                {isPending ? "Confirming..." : "Confirm Provider Match"}
+              </Button>
+              <Button
+                disabled={!canLoadSpinupwp || isPending}
+                onClick={handleLoadSpinupwpCandidates}
+                type="button"
+                variant="secondary"
+              >
+                Load SpinupWP Servers
+              </Button>
             </div>
 
             {spinupwpCandidates.length > 0 ? (
-              <div className="mt-4 space-y-3">
+              <div className="space-y-3 border-t border-border pt-3">
                 <select
                   className="h-12 w-full rounded-2xl border border-border bg-white px-4 text-sm"
                   onChange={(event) => setSelectedSpinupwpServerId(event.target.value)}
@@ -603,25 +577,21 @@ export function ServerDetailView({
                     </option>
                   ))}
                 </select>
+
+                <Button
+                  disabled={!canMapSpinupwp || isPending}
+                  onClick={handleMapSpinupwpServer}
+                  type="button"
+                >
+                  Map SpinupWP Server
+                </Button>
               </div>
             ) : null}
           </div>
         </Card>
 
-        <Card className="space-y-3">
-          <h2 className="text-lg font-semibold text-foreground">Timeline</h2>
-          <ul className="space-y-3 text-sm text-muted-foreground">
-            <li>Created: {new Date(server.createdAt).toLocaleString()}</li>
-            <li>Updated: {new Date(server.updatedAt).toLocaleString()}</li>
-            <li>
-              Primary match:{" "}
-              {server.providerMatch
-                ? `${server.providerMatch.providerKind} ${Math.round(server.providerMatch.confidence * 100)}%`
-                : "pending"}
-            </li>
-          </ul>
-
-          <div id="recent-checks" className="border-t border-border pt-3">
+        <div className="space-y-4">
+          <Card id="recent-checks" className="space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
                 <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">
@@ -649,13 +619,11 @@ export function ServerDetailView({
               </div>
             </div>
 
-            <div className="mt-4 space-y-2">
+            <div className="space-y-2">
               {checks.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  No recent checks loaded yet.
-                </p>
+                <p className="text-sm text-muted-foreground">No recent checks loaded yet.</p>
               ) : (
-                checks.map((check) => (
+                checks.map((check) =>
                   (() => {
                     const incidentHref = getActiveIncidentHref(incidents, check.checkType);
 
@@ -698,13 +666,13 @@ export function ServerDetailView({
                         {content}
                       </div>
                     );
-                  })()
-                ))
+                  })(),
+                )
               )}
             </div>
 
             {checksPagination ? (
-              <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+              <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
                 <div>
                   <span>{checksPagination.hasMore ? "More checks available" : "End of checks"}</span>
                 </div>
@@ -728,9 +696,9 @@ export function ServerDetailView({
                 </div>
               </div>
             ) : null}
-          </div>
+          </Card>
 
-          <div id="server-incidents" className="border-t border-border pt-3">
+          <Card id="server-incidents" className="space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
                 <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">
@@ -759,17 +727,15 @@ export function ServerDetailView({
               </Button>
             </div>
 
-            <div className="mt-4 space-y-2">
+            <div className="space-y-2">
               {incidents.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  No incidents loaded yet.
-                </p>
+                <p className="text-sm text-muted-foreground">No incidents loaded yet.</p>
               ) : (
                 incidents.map((incident) => (
                   <div
                     className="rounded-2xl border border-border bg-white/80 p-3 text-sm text-foreground"
-                    key={incident.id}
                     id={`incident-${incident.id}`}
+                    key={incident.id}
                   >
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div className="space-y-1">
@@ -805,7 +771,8 @@ export function ServerDetailView({
                           ))
                         ) : (
                           <div className="text-xs text-amber-700">
-                            {incident.remediation.reasons[0] ?? "No allowlisted remediations are available for this incident."}
+                            {incident.remediation.reasons[0] ??
+                              "No allowlisted remediations are available for this incident."}
                           </div>
                         )}
                       </div>
@@ -821,7 +788,7 @@ export function ServerDetailView({
             </div>
 
             {incidentsPagination ? (
-              <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+              <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
                 <div>
                   <span>{incidentsPagination.hasMore ? "More incidents available" : "End of incidents"}</span>
                 </div>
@@ -845,9 +812,9 @@ export function ServerDetailView({
                 </div>
               </div>
             ) : null}
-          </div>
+          </Card>
 
-          <div id="remediation-runs" className="border-t border-border pt-3">
+          <Card id="remediation-runs" className="space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
                 <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">
@@ -870,11 +837,9 @@ export function ServerDetailView({
               </Button>
             </div>
 
-            <div className="mt-4 space-y-2">
+            <div className="space-y-2">
               {runs.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  No remediation runs loaded yet.
-                </p>
+                <p className="text-sm text-muted-foreground">No remediation runs loaded yet.</p>
               ) : (
                 runs.map((run) => (
                   <div
@@ -905,7 +870,7 @@ export function ServerDetailView({
             </div>
 
             {runsPagination ? (
-              <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+              <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
                 <div>
                   <span>{runsPagination.hasMore ? "More runs available" : "End of remediation history"}</span>
                 </div>
@@ -929,9 +894,9 @@ export function ServerDetailView({
                 </div>
               </div>
             ) : null}
-          </div>
+          </Card>
 
-          <div id="activity-feed" className="border-t border-border pt-3">
+          <Card id="activity-feed" className="space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
                 <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">
@@ -968,7 +933,7 @@ export function ServerDetailView({
               </Button>
             </div>
 
-            <div className="mt-4 grid gap-3 rounded-2xl border border-border bg-white/70 p-4 lg:grid-cols-[180px_minmax(0,1fr)_auto_auto]">
+            <div className="grid gap-3 rounded-2xl border border-border bg-white/70 p-4 lg:grid-cols-[180px_minmax(0,1fr)_auto_auto]">
               <label className="space-y-1 text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">
                 Kind
                 <select
@@ -1007,7 +972,7 @@ export function ServerDetailView({
               </div>
             </div>
 
-            <div className="mt-4 space-y-2">
+            <div className="space-y-2">
               {activity.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
                   {appliedActivityKindFilter !== "all" || appliedActivityEventType
@@ -1059,7 +1024,7 @@ export function ServerDetailView({
             </div>
 
             {activityPagination ? (
-              <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+              <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
                 <div>
                   <span>{activityPagination.hasMore ? "More activity available" : "End of activity"}</span>
                 </div>
@@ -1083,8 +1048,8 @@ export function ServerDetailView({
                 </div>
               </div>
             ) : null}
-          </div>
-        </Card>
+          </Card>
+        </div>
       </div>
     </div>
   );
