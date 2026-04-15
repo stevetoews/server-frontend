@@ -15,7 +15,7 @@ export function Button({
   return (
     <button
       className={cn(
-        "inline-flex h-11 items-center justify-center rounded-full px-5 text-sm font-semibold transition",
+        "inline-flex h-11 items-center justify-center rounded-full px-5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-45 disabled:shadow-none",
         variant === "primary" &&
           "bg-primary text-primary-foreground shadow-[0_18px_40px_-22px_rgba(18,61,54,0.65)] hover:opacity-95",
         variant === "secondary" &&

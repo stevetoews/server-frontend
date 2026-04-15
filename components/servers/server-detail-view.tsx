@@ -21,7 +21,6 @@ import {
   getServerChecks,
   getServerIncidents,
   getServerRemediations,
-  getServerWordops,
   installServerWordopsStack,
   remediateIncident,
   runServerChecks,
@@ -225,25 +224,6 @@ export function ServerDetailView({
         : wordops.status === "ready"
           ? "Ready"
           : "Error";
-
-  function handleRefreshWordops() {
-    setError(null);
-    setStatusMessage(null);
-
-    startTransition(async () => {
-      try {
-        const payload = await getServerWordops(server.id);
-        setWordops(payload.data.overview);
-        setStatusMessage("WordOps status refreshed from the live server.");
-      } catch (wordopsError) {
-        setError(
-          wordopsError instanceof Error
-            ? wordopsError.message
-            : "Unable to load WordOps status",
-        );
-      }
-    });
-  }
 
   function handleSyncWordopsSites() {
     setError(null);
@@ -716,7 +696,7 @@ export function ServerDetailView({
           <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-800">
             <div className="font-medium">WordOps CLI was not detected on this server.</div>
             <div className="mt-1 text-amber-700">
-              Install WordOps on the server, then click <span className="font-medium">Refresh WordOps</span>.
+              Install WordOps on the server, then reload this page.
             </div>
           </div>
         ) : null}
@@ -780,9 +760,6 @@ export function ServerDetailView({
         </div>
 
         <div className="flex flex-wrap gap-2">
-          <Button disabled={isPending} onClick={handleRefreshWordops} type="button" variant="secondary">
-            Refresh WordOps
-          </Button>
           <Button
             disabled={isPending || !wordops.installed || wordopsReady}
             onClick={handleInstallWordopsStack}
@@ -990,7 +967,9 @@ export function ServerDetailView({
                   <div className="font-medium">{site.domain}</div>
                   <div className="mt-1 text-xs text-muted-foreground">{site.sitePath}</div>
                   <div className="mt-2 flex flex-wrap gap-1.5 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-                    <span className="rounded-full border border-border px-2 py-0.5">{site.appType}</span>
+                    {site.appType !== "unknown" ? (
+                      <span className="rounded-full border border-border px-2 py-0.5">{site.appType}</span>
+                    ) : null}
                     {site.cacheType ? (
                       <span className="rounded-full border border-border px-2 py-0.5">{site.cacheType}</span>
                     ) : null}

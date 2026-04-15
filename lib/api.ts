@@ -15,6 +15,24 @@ interface ApiErrorPayload {
   };
 }
 
+async function readJsonPayload<TPayload>(response: Response): Promise<TPayload | null> {
+  const text = await response.text();
+
+  if (!text) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(text) as TPayload;
+  } catch {
+    if (response.ok) {
+      return null;
+    }
+
+    throw new Error("Server returned an incomplete response");
+  }
+}
+
 function readApiErrorMessage(payload: ApiErrorPayload, fallback: string) {
   const fieldErrors = payload.error?.details?.fieldErrors;
 
@@ -508,18 +526,45 @@ export async function createServerWordopsSite(serverId: string, input: WordopsCr
     body: JSON.stringify(input),
   });
 
-  const payload = await response.json();
-
-  if (!response.ok) {
-    throw new Error(readApiErrorMessage(payload, "Unable to create WordOps site"));
-  }
-
-  return payload as ApiEnvelope<{
+  const payload = await readJsonPayload<ApiEnvelope<{
     execution: WordopsMutationResult;
     overview: WordopsOverview;
     server: ServerRecord;
     sites: WordopsSiteRecord[];
-  }>;
+  }> | ApiErrorPayload>(response);
+
+  if (!response.ok) {
+    throw new Error(readApiErrorMessage((payload ?? {}) as ApiErrorPayload, "Unable to create WordOps site"));
+  }
+
+  if (payload) {
+    return payload as ApiEnvelope<{
+      execution: WordopsMutationResult;
+      overview: WordopsOverview;
+      server: ServerRecord;
+      sites: WordopsSiteRecord[];
+    }>;
+  }
+
+  const [overviewPayload, sitesPayload, serverPayload] = await Promise.all([
+    getServerWordops(serverId),
+    getServerSites(serverId),
+    getServer(serverId),
+  ]);
+
+  return {
+    ok: true,
+    data: {
+      execution: {
+        commandText: "",
+        output: "The site command appears to have completed, but the server returned an incomplete response. Refreshed the latest server state.",
+        status: "succeeded" as const,
+      },
+      overview: overviewPayload.data.overview,
+      server: serverPayload.data.server,
+      sites: sitesPayload.data.sites,
+    },
+  };
 }
 
 export async function installServerWordopsStack(serverId: string, input: WordopsStackInstallInput) {
@@ -536,18 +581,47 @@ export async function installServerWordopsStack(serverId: string, input: Wordops
     },
   );
 
-  const payload = await response.json();
-
-  if (!response.ok) {
-    throw new Error(readApiErrorMessage(payload, "Unable to install WordOps web stack"));
-  }
-
-  return payload as ApiEnvelope<{
+  const payload = await readJsonPayload<ApiEnvelope<{
     execution: WordopsMutationResult;
     overview: WordopsOverview;
     server: ServerRecord;
     sites: WordopsSiteRecord[];
-  }>;
+  }> | ApiErrorPayload>(response);
+
+  if (!response.ok) {
+    throw new Error(
+      readApiErrorMessage((payload ?? {}) as ApiErrorPayload, "Unable to install WordOps web stack"),
+    );
+  }
+
+  if (payload) {
+    return payload as ApiEnvelope<{
+      execution: WordopsMutationResult;
+      overview: WordopsOverview;
+      server: ServerRecord;
+      sites: WordopsSiteRecord[];
+    }>;
+  }
+
+  const [overviewPayload, sitesPayload, serverPayload] = await Promise.all([
+    getServerWordops(serverId),
+    getServerSites(serverId),
+    getServer(serverId),
+  ]);
+
+  return {
+    ok: true,
+    data: {
+      execution: {
+        commandText: "",
+        output: "The stack install command appears to have completed, but the server returned an incomplete response. Refreshed the latest server state.",
+        status: "succeeded" as const,
+      },
+      overview: overviewPayload.data.overview,
+      server: serverPayload.data.server,
+      sites: sitesPayload.data.sites,
+    },
+  };
 }
 
 async function mutateServerWordopsSite(serverId: string, domain: string, action: "enable" | "disable" | "delete") {
@@ -560,18 +634,45 @@ async function mutateServerWordopsSite(serverId: string, domain: string, action:
     },
   );
 
-  const payload = await response.json();
-
-  if (!response.ok) {
-    throw new Error(readApiErrorMessage(payload, `Unable to ${action} WordOps site`));
-  }
-
-  return payload as ApiEnvelope<{
+  const payload = await readJsonPayload<ApiEnvelope<{
     execution: WordopsMutationResult;
     overview: WordopsOverview;
     server: ServerRecord;
     sites: WordopsSiteRecord[];
-  }>;
+  }> | ApiErrorPayload>(response);
+
+  if (!response.ok) {
+    throw new Error(readApiErrorMessage((payload ?? {}) as ApiErrorPayload, `Unable to ${action} WordOps site`));
+  }
+
+  if (payload) {
+    return payload as ApiEnvelope<{
+      execution: WordopsMutationResult;
+      overview: WordopsOverview;
+      server: ServerRecord;
+      sites: WordopsSiteRecord[];
+    }>;
+  }
+
+  const [overviewPayload, sitesPayload, serverPayload] = await Promise.all([
+    getServerWordops(serverId),
+    getServerSites(serverId),
+    getServer(serverId),
+  ]);
+
+  return {
+    ok: true,
+    data: {
+      execution: {
+        commandText: "",
+        output: `The ${action} command appears to have completed, but the server returned an incomplete response. Refreshed the latest server state.`,
+        status: "succeeded" as const,
+      },
+      overview: overviewPayload.data.overview,
+      server: serverPayload.data.server,
+      sites: sitesPayload.data.sites,
+    },
+  };
 }
 
 export function enableServerWordopsSite(serverId: string, domain: string) {
