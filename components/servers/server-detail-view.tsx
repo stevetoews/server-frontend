@@ -157,6 +157,18 @@ function getActiveIncidentHref(incidents: IncidentRecord[], checkType?: string) 
   return activeIncident ? `/incidents/${activeIncident.id}` : null;
 }
 
+function getSiteTypeLabel(site: WordopsSiteRecord) {
+  if (!site.appType || site.appType === "unknown") {
+    return "WordPress";
+  }
+
+  if (site.appType === "wordpress") {
+    return "WordPress";
+  }
+
+  return site.appType;
+}
+
 export function ServerDetailView({
   initialActivityEventType,
   initialActivityKindFilter,
@@ -608,12 +620,19 @@ export function ServerDetailView({
         ))}
       </div>
 
-      <Card id="server-information" className="space-y-2 p-4 md:p-5">
-        <div className="flex flex-wrap items-start justify-between gap-2">
-          <div>
-            <h2 className="text-base font-semibold text-foreground">Server information</h2>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              Core identity and state. The operational cards come after this.
+      <Card id="server-information" className="space-y-3 p-4 md:p-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="space-y-1">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
+              Server Details
+            </p>
+            <h2 className="text-base font-semibold text-foreground">{server.name}</h2>
+            <p className="text-sm text-muted-foreground">
+              {server.hostname}
+              {server.ipAddress ? ` • ${server.ipAddress}` : ""}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {server.environment} • {server.sshUsername}@{server.ipAddress ?? server.hostname}:{server.sshPort}
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -628,25 +647,7 @@ export function ServerDetailView({
           </div>
         </div>
 
-        <div className="grid gap-2 md:grid-cols-2">
-          <div className="rounded-xl border border-border bg-white/75 p-3 text-sm text-foreground">
-            <div className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
-              Identity
-            </div>
-            <div className="mt-1.5 font-medium">{server.name}</div>
-            <div className="mt-1 text-muted-foreground">{server.hostname}</div>
-            <div className="mt-1 text-muted-foreground">
-              {server.environment} • {server.onboardingStatus}
-            </div>
-          </div>
-          <div className="rounded-xl border border-border bg-white/75 p-3 text-sm text-foreground">
-            <div className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">SSH</div>
-            <div className="mt-1.5">
-              {server.sshUsername}@{server.ipAddress ?? server.hostname}:{server.sshPort}
-            </div>
-            <div className="mt-1 text-muted-foreground">Mode: {server.sshAuthMode}</div>
-          </div>
-        </div>
+        {server.providerSnapshot ? <LinodeStandardInfo server={server} /> : null}
 
         {server.notes ? (
           <div className="rounded-xl border border-border bg-white/75 p-3 text-sm text-foreground">
@@ -655,12 +656,6 @@ export function ServerDetailView({
           </div>
         ) : null}
       </Card>
-
-      {server.providerSnapshot ? (
-        <Card id="linode-standard-info" className="space-y-2 p-4 md:p-5">
-          <LinodeStandardInfo server={server} />
-        </Card>
-      ) : null}
 
       <Card id="wordops" className="space-y-3 p-4 md:p-5">
         <div className="flex flex-wrap items-start justify-between gap-2">
@@ -770,36 +765,6 @@ export function ServerDetailView({
           <Button disabled={isPending || !wordopsReady} onClick={handleSyncWordopsSites} type="button">
             Sync Sites
           </Button>
-        </div>
-
-        <div className="rounded-xl border border-border bg-slate-950 px-3 py-3 text-xs text-slate-100">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="font-semibold uppercase tracking-[0.2em] text-slate-300">
-              Terminal
-            </div>
-            <div
-              className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] ${
-                terminal?.status === "succeeded"
-                  ? "bg-emerald-500/15 text-emerald-200"
-                  : terminal?.status === "failed"
-                    ? "bg-rose-500/15 text-rose-200"
-                    : "bg-slate-700 text-slate-200"
-              }`}
-            >
-              {terminal?.status ?? "idle"}
-            </div>
-          </div>
-          <div className="mt-3 space-y-2">
-            <div className="text-[11px] text-slate-400">
-              {terminal?.title ?? "No WordOps command has been run from this page yet."}
-            </div>
-            <pre className="overflow-x-auto whitespace-pre-wrap rounded-lg border border-slate-800 bg-black/30 px-3 py-2 font-mono text-[12px] text-slate-100">
-              {terminal?.commandText ? `$ ${terminal.commandText}` : "$"}
-            </pre>
-            <pre className="min-h-[96px] overflow-x-auto whitespace-pre-wrap rounded-lg border border-slate-800 bg-black/30 px-3 py-2 font-mono text-[12px] text-slate-200">
-              {terminal?.output ?? "Waiting for a WordOps action..."}
-            </pre>
-          </div>
         </div>
 
         <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4">
@@ -951,6 +916,36 @@ export function ServerDetailView({
           </div>
         </form>
 
+        <div className="rounded-xl border border-border bg-slate-950 px-3 py-3 text-xs text-slate-100">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="font-semibold uppercase tracking-[0.2em] text-slate-300">
+              Terminal
+            </div>
+            <div
+              className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] ${
+                terminal?.status === "succeeded"
+                  ? "bg-emerald-500/15 text-emerald-200"
+                  : terminal?.status === "failed"
+                    ? "bg-rose-500/15 text-rose-200"
+                    : "bg-slate-700 text-slate-200"
+              }`}
+            >
+              {terminal?.status ?? "idle"}
+            </div>
+          </div>
+          <div className="mt-3 space-y-2">
+            <div className="text-[11px] text-slate-400">
+              {terminal?.title ?? "No WordOps command has been run from this page yet."}
+            </div>
+            <pre className="overflow-x-auto whitespace-pre-wrap rounded-lg border border-slate-800 bg-black/30 px-3 py-2 font-mono text-[12px] text-slate-100">
+              {terminal?.commandText ? `$ ${terminal.commandText}` : "$"}
+            </pre>
+            <pre className="min-h-[96px] overflow-x-auto whitespace-pre-wrap rounded-lg border border-slate-800 bg-black/30 px-3 py-2 font-mono text-[12px] text-slate-200">
+              {terminal?.output ?? "Waiting for a WordOps action..."}
+            </pre>
+          </div>
+        </div>
+
         {displayedSites.length > 0 ? (
           <div className="space-y-2 border-t border-border pt-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
@@ -964,17 +959,31 @@ export function ServerDetailView({
             <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
               {displayedSites.map((site) => (
                 <div className="rounded-xl border border-border bg-white/75 p-3 text-sm text-foreground" key={`${site.domain}:${site.sitePath}`}>
-                  <div className="font-medium">{site.domain}</div>
-                  <div className="mt-1 text-xs text-muted-foreground">{site.sitePath}</div>
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <div className="font-medium">{site.domain}</div>
+                      <div className="mt-1 text-xs text-muted-foreground">{site.sitePath}</div>
+                    </div>
+                    <span className="rounded-full border border-border px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                      {getSiteTypeLabel(site)}
+                    </span>
+                  </div>
+                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                    <div>
+                      <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">PHP</div>
+                      <div className="mt-0.5 text-sm text-foreground">{site.phpVersion ? `PHP ${site.phpVersion}` : "Default"}</div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">Cache</div>
+                      <div className="mt-0.5 text-sm text-foreground">{site.cacheType ?? "Standard"}</div>
+                    </div>
+                  </div>
                   <div className="mt-2 flex flex-wrap gap-1.5 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-                    {site.appType !== "unknown" ? (
-                      <span className="rounded-full border border-border px-2 py-0.5">{site.appType}</span>
+                    {site.phpVersion ? (
+                      <span className="rounded-full border border-border px-2 py-0.5">PHP {site.phpVersion}</span>
                     ) : null}
                     {site.cacheType ? (
                       <span className="rounded-full border border-border px-2 py-0.5">{site.cacheType}</span>
-                    ) : null}
-                    {site.phpVersion ? (
-                      <span className="rounded-full border border-border px-2 py-0.5">PHP {site.phpVersion}</span>
                     ) : null}
                   </div>
                   <div className="mt-3 flex flex-wrap gap-2">
