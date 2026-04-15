@@ -122,6 +122,7 @@ export interface PaginationMeta {
   limit: number;
   offset: number;
   returned: number;
+  total: number;
 }
 
 export interface ListOptions {
