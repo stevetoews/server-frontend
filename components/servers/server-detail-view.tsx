@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -25,6 +25,12 @@ import {
 } from "@/lib/api";
 
 const DETAIL_PAGE_SIZE = 5;
+const ACTIVITY_KIND_OPTIONS = [
+  { label: "All", value: "all" },
+  { label: "Audit", value: "audit" },
+  { label: "Incidents", value: "incident" },
+  { label: "Remediations", value: "remediation" },
+] as const;
 const SECTION_LINKS = [
   { href: "#onboarding-state", label: "Onboarding" },
   { href: "#recent-checks", label: "Checks" },
@@ -34,17 +40,24 @@ const SECTION_LINKS = [
 ] as const;
 
 interface ServerDetailViewProps {
+  initialActivityEventType: string;
+  initialActivityKindFilter: ActivityKindFilter;
   initialActivity: ServerActivityItem[];
   initialActivityPagination: PaginationMeta | null;
   server: ServerRecord;
 }
 
+type ActivityKindFilter = "all" | "audit" | "incident" | "remediation";
+
 export function ServerDetailView({
+  initialActivityEventType,
+  initialActivityKindFilter,
   initialActivity,
   initialActivityPagination,
   server,
 }: ServerDetailViewProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
@@ -64,6 +77,13 @@ export function ServerDetailView({
   const [activity, setActivity] = useState<ServerActivityItem[]>(initialActivity);
   const [activityPagination, setActivityPagination] =
     useState<PaginationMeta | null>(initialActivityPagination);
+  const [activityKindFilter, setActivityKindFilter] =
+    useState<ActivityKindFilter>(initialActivityKindFilter);
+  const [activityEventType, setActivityEventType] = useState(initialActivityEventType);
+  const [appliedActivityKindFilter, setAppliedActivityKindFilter] =
+    useState<ActivityKindFilter>(initialActivityKindFilter);
+  const [appliedActivityEventType, setAppliedActivityEventType] =
+    useState(initialActivityEventType);
   const [activityOffset, setActivityOffset] = useState(0);
 
   function handleConfirmProviderMatch() {
@@ -211,15 +231,25 @@ export function ServerDetailView({
     });
   }
 
-  function loadActivity(offset = activityOffset) {
+  function loadActivity(
+      offset = activityOffset,
+      filters?: {
+      eventType?: string;
+      kind?: ActivityKindFilter;
+    },
+  ) {
     setError(null);
     setStatusMessage(null);
 
     startTransition(async () => {
       try {
+        const kind = filters?.kind ?? appliedActivityKindFilter;
+        const eventType = filters?.eventType ?? appliedActivityEventType;
         const payload = await getServerActivity(server.id, {
           limit: DETAIL_PAGE_SIZE,
           offset,
+          ...(kind !== "all" ? { kind } : {}),
+          ...(eventType ? { eventType } : {}),
         });
         setActivity(payload.data.items);
         setActivityPagination(payload.data.pagination ?? null);
@@ -230,6 +260,53 @@ export function ServerDetailView({
         );
       }
     });
+  }
+
+  function updateActivityRoute(filters: {
+    eventType?: string;
+    kind: ActivityKindFilter;
+  }) {
+    const params = new URLSearchParams();
+
+    if (filters.kind !== "all") {
+      params.set("kind", filters.kind);
+    }
+
+    if (filters.eventType) {
+      params.set("eventType", filters.eventType);
+    }
+
+    router.replace(params.toString() ? `${pathname}?${params.toString()}` : pathname, {
+      scroll: false,
+    });
+  }
+
+  function handleApplyActivityFilters() {
+    const normalizedEventType = activityEventType.trim();
+    const nextFilters = {
+      kind: activityKindFilter,
+      eventType: normalizedEventType,
+    };
+
+    setAppliedActivityKindFilter(nextFilters.kind);
+    setAppliedActivityEventType(nextFilters.eventType);
+    setActivityEventType(nextFilters.eventType);
+    updateActivityRoute(nextFilters);
+    loadActivity(0, nextFilters);
+  }
+
+  function handleClearActivityFilters() {
+    const nextFilters = {
+      kind: "all" as ActivityKindFilter,
+      eventType: "",
+    };
+
+    setActivityKindFilter(nextFilters.kind);
+    setActivityEventType(nextFilters.eventType);
+    setAppliedActivityKindFilter(nextFilters.kind);
+    setAppliedActivityEventType(nextFilters.eventType);
+    updateActivityRoute(nextFilters);
+    loadActivity(0, nextFilters);
   }
 
   function handleRunChecks() {
@@ -719,6 +796,14 @@ export function ServerDetailView({
                       Showing {activityPagination.offset + 1}-
                       {activityPagination.offset + activityPagination.returned} of{" "}
                       {activityPagination.total}
+                      {appliedActivityKindFilter !== "all" || appliedActivityEventType
+                        ? ` • filtered by ${[
+                            appliedActivityKindFilter !== "all" ? appliedActivityKindFilter : null,
+                            appliedActivityEventType || null,
+                          ]
+                            .filter(Boolean)
+                            .join(" / ")}`
+                        : ""}
                     </span>
                   ) : (
                     <span>Chronological server activity</span>
@@ -736,10 +821,51 @@ export function ServerDetailView({
               </Button>
             </div>
 
+            <div className="mt-4 grid gap-3 rounded-2xl border border-border bg-white/70 p-4 lg:grid-cols-[180px_minmax(0,1fr)_auto_auto]">
+              <label className="space-y-1 text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">
+                Kind
+                <select
+                  className="h-11 w-full rounded-xl border border-border bg-white px-3 text-sm font-normal uppercase tracking-normal text-foreground"
+                  onChange={(event) => setActivityKindFilter(event.target.value as ActivityKindFilter)}
+                  value={activityKindFilter}
+                >
+                  {ACTIVITY_KIND_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="space-y-1 text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">
+                Event type
+                <input
+                  className="h-11 w-full rounded-xl border border-border bg-white px-3 text-sm text-foreground placeholder:text-muted-foreground"
+                  onChange={(event) => setActivityEventType(event.target.value)}
+                  placeholder="e.g. restart.nginx"
+                  value={activityEventType}
+                />
+              </label>
+
+              <div className="flex items-end">
+                <Button disabled={isPending} onClick={handleApplyActivityFilters} type="button">
+                  Apply
+                </Button>
+              </div>
+
+              <div className="flex items-end">
+                <Button disabled={isPending} onClick={handleClearActivityFilters} type="button" variant="secondary">
+                  Clear
+                </Button>
+              </div>
+            </div>
+
             <div className="mt-4 space-y-2">
               {activity.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
-                  No activity loaded yet.
+                  {appliedActivityKindFilter !== "all" || appliedActivityEventType
+                    ? "No activity matched the current filters."
+                    : "No activity loaded yet."}
                 </p>
               ) : (
                 activity.map((entry) => (

@@ -187,6 +187,12 @@ export interface ListOptions {
   offset?: number;
 }
 
+export interface ActivityListOptions extends ListOptions {
+  cookie?: string;
+  eventType?: string;
+  kind?: "audit" | "incident" | "remediation";
+}
+
 function buildPaginationSearchParams(options?: ListOptions): URLSearchParams {
   const params = new URLSearchParams();
 
@@ -533,10 +539,19 @@ export async function getServerRemediations(serverId: string, options?: ListOpti
 
 export async function getServerActivity(
   serverId: string,
-  options?: ListOptions & { cookie?: string },
+  options?: ActivityListOptions,
 ) {
   const env = getClientEnv();
   const params = buildPaginationSearchParams(options);
+
+  if (options?.kind) {
+    params.set("kind", options.kind);
+  }
+
+  if (options?.eventType) {
+    params.set("eventType", options.eventType);
+  }
+
   const response = await fetch(
     `${env.NEXT_PUBLIC_API_BASE_URL}/servers/${serverId}/activity${params.toString() ? `?${params.toString()}` : ""}`,
     {
