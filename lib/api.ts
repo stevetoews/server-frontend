@@ -155,6 +155,33 @@ export interface PaginationMeta {
   total: number;
 }
 
+export type ServerActivityItem =
+  | {
+      createdAt: string;
+      id: string;
+      kind: "audit";
+      payload: {
+        actorId: string;
+        actorType: string;
+        eventType: string;
+        metadata?: Record<string, unknown>;
+        targetId?: string;
+        targetType?: string;
+      };
+    }
+  | {
+      createdAt: string;
+      id: string;
+      kind: "incident";
+      payload: IncidentRecord;
+    }
+  | {
+      createdAt: string;
+      id: string;
+      kind: "remediation";
+      payload: RemediationRunRecord;
+    };
+
 export interface ListOptions {
   limit?: number;
   offset?: number;
@@ -501,6 +528,30 @@ export async function getServerRemediations(serverId: string, options?: ListOpti
   return payload as ApiEnvelope<{
     runs: RemediationRunRecord[];
     pagination?: PaginationMeta;
+  }>;
+}
+
+export async function getServerActivity(serverId: string, options?: ListOptions) {
+  const env = getClientEnv();
+  const params = buildPaginationSearchParams(options);
+  const response = await fetch(
+    `${env.NEXT_PUBLIC_API_BASE_URL}/servers/${serverId}/activity${params.toString() ? `?${params.toString()}` : ""}`,
+    {
+      cache: "no-store",
+      credentials: "include",
+    },
+  );
+
+  const payload = await response.json();
+
+  if (!response.ok) {
+    throw new Error(payload?.error?.message ?? "Unable to load server activity");
+  }
+
+  return payload as ApiEnvelope<{
+    items: ServerActivityItem[];
+    pagination?: PaginationMeta;
+    server: ServerRecord;
   }>;
 }
 

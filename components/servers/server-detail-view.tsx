@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
   activateServer,
+  getServerActivity,
   getServerChecks,
   getServerIncidents,
   getServerRemediations,
@@ -20,6 +21,7 @@ import {
   type RemediationRunRecord,
   type ServerRecord,
   type SpinupwpServerCandidate,
+  type ServerActivityItem,
 } from "@/lib/api";
 
 const DETAIL_PAGE_SIZE = 5;
@@ -28,6 +30,7 @@ const SECTION_LINKS = [
   { href: "#recent-checks", label: "Checks" },
   { href: "#server-incidents", label: "Incidents" },
   { href: "#remediation-runs", label: "Remediations" },
+  { href: "#activity-feed", label: "Activity" },
 ] as const;
 
 interface ServerDetailViewProps {
@@ -52,6 +55,9 @@ export function ServerDetailView({ server }: ServerDetailViewProps) {
   const [runs, setRuns] = useState<RemediationRunRecord[]>([]);
   const [runsPagination, setRunsPagination] = useState<PaginationMeta | null>(null);
   const [runsOffset, setRunsOffset] = useState(0);
+  const [activity, setActivity] = useState<ServerActivityItem[]>([]);
+  const [activityPagination, setActivityPagination] = useState<PaginationMeta | null>(null);
+  const [activityOffset, setActivityOffset] = useState(0);
 
   function handleConfirmProviderMatch() {
     if (!server.providerMatch) {
@@ -198,6 +204,27 @@ export function ServerDetailView({ server }: ServerDetailViewProps) {
     });
   }
 
+  function loadActivity(offset = activityOffset) {
+    setError(null);
+    setStatusMessage(null);
+
+    startTransition(async () => {
+      try {
+        const payload = await getServerActivity(server.id, {
+          limit: DETAIL_PAGE_SIZE,
+          offset,
+        });
+        setActivity(payload.data.items);
+        setActivityPagination(payload.data.pagination ?? null);
+        setActivityOffset(offset);
+      } catch (activityError) {
+        setError(
+          activityError instanceof Error ? activityError.message : "Unable to load activity",
+        );
+      }
+    });
+  }
+
   function handleRunChecks() {
     setError(null);
     setStatusMessage(null);
@@ -259,6 +286,7 @@ export function ServerDetailView({ server }: ServerDetailViewProps) {
     loadChecks(0);
     loadIncidents(0);
     loadRuns(0);
+    loadActivity(0);
     // Load the default server detail slices on entry.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [server.id]);
@@ -662,6 +690,104 @@ export function ServerDetailView({ server }: ServerDetailViewProps) {
                   <Button
                     disabled={isPending || !runsPagination.hasMore}
                     onClick={() => loadRuns(runsOffset + DETAIL_PAGE_SIZE)}
+                    type="button"
+                    variant="secondary"
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
+            ) : null}
+          </div>
+
+          <div id="activity-feed" className="border-t border-border pt-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">
+                  Activity Feed
+                </div>
+                <div className="mt-1 text-sm text-muted-foreground">
+                  {activityPagination ? (
+                    <span>
+                      Showing {activityPagination.offset + 1}-
+                      {activityPagination.offset + activityPagination.returned} of{" "}
+                      {activityPagination.total}
+                    </span>
+                  ) : (
+                    <span>Chronological server activity</span>
+                  )}
+                </div>
+              </div>
+
+              <Button
+                disabled={isPending}
+                onClick={() => loadActivity(0)}
+                type="button"
+                variant="secondary"
+              >
+                Refresh
+              </Button>
+            </div>
+
+            <div className="mt-4 space-y-2">
+              {activity.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No activity loaded yet.
+                </p>
+              ) : (
+                activity.map((entry) => (
+                  <div
+                    className="rounded-2xl border border-border bg-white/80 p-3 text-sm text-foreground"
+                    key={entry.id}
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <div className="font-medium">
+                          {entry.kind === "audit"
+                            ? entry.payload.eventType
+                            : entry.kind === "incident"
+                              ? entry.payload.title
+                              : entry.payload.actionType}
+                        </div>
+                        <div className="text-muted-foreground">
+                          {entry.kind === "audit"
+                            ? `${entry.payload.actorType} • ${entry.payload.actorId}`
+                            : entry.kind === "incident"
+                              ? entry.payload.summary ?? "Incident opened"
+                              : entry.payload.outputSnippet ??
+                                entry.payload.commandText ??
+                                "Remediation run"}
+                        </div>
+                      </div>
+                      <span className="rounded-full border border-border px-2 py-0.5 text-[11px] uppercase tracking-[0.24em] text-muted-foreground">
+                        {entry.kind}
+                      </span>
+                    </div>
+                    <div className="mt-2 text-xs text-muted-foreground">
+                      {new Date(entry.createdAt).toLocaleString()}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {activityPagination ? (
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+                <div>
+                  <span>{activityPagination.hasMore ? "More activity available" : "End of activity"}</span>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    disabled={isPending || activityOffset === 0}
+                    onClick={() => loadActivity(Math.max(0, activityOffset - DETAIL_PAGE_SIZE))}
+                    type="button"
+                    variant="secondary"
+                  >
+                    Previous
+                  </Button>
+                  <Button
+                    disabled={isPending || !activityPagination.hasMore}
+                    onClick={() => loadActivity(activityOffset + DETAIL_PAGE_SIZE)}
                     type="button"
                     variant="secondary"
                   >
