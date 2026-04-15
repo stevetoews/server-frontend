@@ -6,9 +6,16 @@ export interface ApiEnvelope<TData> {
 }
 
 export interface AuthUser {
+  createdAt: string;
   email: string;
   id: string;
   role: string;
+}
+
+export interface AuthSession {
+  expiresAt: string;
+  issuedAt: string;
+  userId: string;
 }
 
 export interface ProviderMatch {
@@ -203,6 +210,42 @@ export async function login(input: { email: string; password: string }) {
   }
 
   return payload as ApiEnvelope<{ user: AuthUser }>;
+}
+
+export async function logout() {
+  const env = getClientEnv();
+  const response = await fetch(`${env.NEXT_PUBLIC_API_BASE_URL}/auth/logout`, {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      "content-type": "application/json",
+    },
+  });
+
+  const payload = await response.json();
+
+  if (!response.ok) {
+    throw new Error(payload?.error?.message ?? "Logout failed");
+  }
+
+  return payload as ApiEnvelope<Record<string, never>>;
+}
+
+export async function getCurrentUser(options?: { cookie?: string }) {
+  const env = getClientEnv();
+  const response = await fetch(`${env.NEXT_PUBLIC_API_BASE_URL}/auth/me`, {
+    cache: "no-store",
+    headers: options?.cookie ? { cookie: options.cookie } : undefined,
+    credentials: "include",
+  });
+
+  const payload = await response.json();
+
+  if (!response.ok) {
+    throw new Error(payload?.error?.message ?? "Unable to load current user");
+  }
+
+  return payload as ApiEnvelope<{ session: AuthSession; user: AuthUser }>;
 }
 
 export async function createServer(input: {
@@ -414,13 +457,15 @@ export async function getServerIncidents(serverId: string, options?: ListOptions
   }>;
 }
 
-export async function getIncidents(options?: ListOptions) {
+export async function getIncidents(options?: ListOptions & { cookie?: string }) {
   const env = getClientEnv();
   const params = buildPaginationSearchParams(options);
   const response = await fetch(
     `${env.NEXT_PUBLIC_API_BASE_URL}/incidents${params.toString() ? `?${params.toString()}` : ""}`,
     {
       cache: "no-store",
+      headers: options?.cookie ? { cookie: options.cookie } : undefined,
+      credentials: "include",
     },
   );
 

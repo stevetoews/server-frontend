@@ -52,8 +52,13 @@ export function LoginForm() {
           <span className="text-sm font-medium text-foreground">Email</span>
           <input
             className="h-12 w-full rounded-2xl border border-border bg-white px-4 text-sm outline-none ring-0 transition placeholder:text-slate-400 focus:border-primary"
+            autoCapitalize="none"
+            autoComplete="username"
+            autoCorrect="off"
             placeholder="ops@example.com"
+            required
             type="email"
+            spellCheck={false}
             value={email}
             onChange={(event) => setEmail(event.target.value)}
           />
@@ -63,8 +68,13 @@ export function LoginForm() {
           <span className="text-sm font-medium text-foreground">Password</span>
           <input
             className="h-12 w-full rounded-2xl border border-border bg-white px-4 text-sm outline-none ring-0 transition placeholder:text-slate-400 focus:border-primary"
+            autoComplete="current-password"
+            autoCapitalize="none"
+            autoCorrect="off"
             placeholder="••••••••••••"
+            required
             type="password"
+            spellCheck={false}
             value={password}
             onChange={(event) => setPassword(event.target.value)}
           />

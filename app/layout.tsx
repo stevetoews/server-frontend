@@ -1,6 +1,10 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import { cookies } from "next/headers";
 import Link from "next/link";
+
+import { AccountMenu } from "@/components/auth/account-menu";
+import { getCurrentUser, type AuthSession, type AuthUser } from "@/lib/api";
 
 import "./globals.css";
 
@@ -15,11 +19,39 @@ const navigation = [
   { href: "/settings", label: "Settings" },
 ];
 
-export default function RootLayout({
+function isAuthError(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    /authentication is required|session was not valid/i.test(error.message)
+  );
+}
+
+async function getAuthenticatedUser(): Promise<{ session: AuthSession; user: AuthUser } | null> {
+  const cookieStore = await cookies();
+
+  try {
+    const payload = await getCurrentUser({
+      cookie: cookieStore.toString(),
+    });
+
+    return payload.data;
+  } catch (error) {
+    if (isAuthError(error)) {
+      return null;
+    }
+
+    throw error;
+  }
+}
+
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: ReactNode;
 }>) {
+  const currentUser = await getAuthenticatedUser();
+  const visibleNavigation = currentUser ? navigation : [{ href: "/login", label: "Sign In" }];
+
   return (
     <html lang="en">
       <body>
@@ -35,17 +67,27 @@ export default function RootLayout({
                 </p>
               </div>
 
-              <nav className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                {navigation.map((item) => (
-                  <Link
-                    className="rounded-full px-4 py-2 transition hover:bg-accent hover:text-foreground"
-                    href={item.href}
-                    key={item.href}
-                  >
-                    {item.label}
-                  </Link>
-                ))}
-              </nav>
+              <div className="flex flex-col gap-3 md:items-end">
+                <nav className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                  {visibleNavigation.map((item) => (
+                    <Link
+                      className="rounded-full px-4 py-2 transition hover:bg-accent hover:text-foreground"
+                      href={item.href}
+                      key={item.href}
+                    >
+                      {item.label}
+                    </Link>
+                  ))}
+                </nav>
+
+                {currentUser ? (
+                  <AccountMenu session={currentUser.session} user={currentUser.user} />
+                ) : (
+                  <div className="rounded-full border border-dashed border-border/80 bg-card px-4 py-2 text-xs text-muted-foreground">
+                    Restricted access
+                  </div>
+                )}
+              </div>
             </header>
 
             <main className="flex-1">{children}</main>
