@@ -81,6 +81,14 @@ export interface IncidentRecord {
   checkType?: string;
   id: string;
   openedAt: string;
+  remediation: {
+    allowedActions: Array<{
+      actionType: string;
+      provider: "ssh" | "linode";
+      title: string;
+    }>;
+    reasons: string[];
+  };
   resolvedAt?: string;
   serverId: string;
   severity: "warning" | "critical";
@@ -107,6 +115,32 @@ export interface DashboardSnapshot {
   incidentsOpen: number;
   checksPassing: number;
   providerCoverage: string;
+}
+
+export interface PaginationMeta {
+  hasMore: boolean;
+  limit: number;
+  offset: number;
+  returned: number;
+}
+
+export interface ListOptions {
+  limit?: number;
+  offset?: number;
+}
+
+function buildPaginationSearchParams(options?: ListOptions): URLSearchParams {
+  const params = new URLSearchParams();
+
+  if (typeof options?.limit === "number") {
+    params.set("limit", String(options.limit));
+  }
+
+  if (typeof options?.offset === "number") {
+    params.set("offset", String(options.offset));
+  }
+
+  return params;
 }
 
 export async function getHealth() {
@@ -285,12 +319,16 @@ export async function mapSpinupwpServer(input: {
   }>;
 }
 
-export async function getServerChecks(serverId: string) {
+export async function getServerChecks(serverId: string, options?: ListOptions) {
   const env = getClientEnv();
-  const response = await fetch(`${env.NEXT_PUBLIC_API_BASE_URL}/servers/${serverId}/checks`, {
-    cache: "no-store",
-    credentials: "include",
-  });
+  const params = buildPaginationSearchParams(options);
+  const response = await fetch(
+    `${env.NEXT_PUBLIC_API_BASE_URL}/servers/${serverId}/checks${params.toString() ? `?${params.toString()}` : ""}`,
+    {
+      cache: "no-store",
+      credentials: "include",
+    },
+  );
 
   const payload = await response.json();
 
@@ -300,6 +338,7 @@ export async function getServerChecks(serverId: string) {
 
   return payload as ApiEnvelope<{
     checks: HealthCheckRecord[];
+    pagination?: PaginationMeta;
   }>;
 }
 
@@ -324,15 +363,20 @@ export async function runServerChecks(serverId: string) {
 
   return payload as ApiEnvelope<{
     checks: HealthCheckRecord[];
+    pagination?: PaginationMeta;
   }>;
 }
 
-export async function getServerIncidents(serverId: string) {
+export async function getServerIncidents(serverId: string, options?: ListOptions) {
   const env = getClientEnv();
-  const response = await fetch(`${env.NEXT_PUBLIC_API_BASE_URL}/servers/${serverId}/incidents`, {
-    cache: "no-store",
-    credentials: "include",
-  });
+  const params = buildPaginationSearchParams(options);
+  const response = await fetch(
+    `${env.NEXT_PUBLIC_API_BASE_URL}/servers/${serverId}/incidents${params.toString() ? `?${params.toString()}` : ""}`,
+    {
+      cache: "no-store",
+      credentials: "include",
+    },
+  );
 
   const payload = await response.json();
 
@@ -342,14 +386,19 @@ export async function getServerIncidents(serverId: string) {
 
   return payload as ApiEnvelope<{
     incidents: IncidentRecord[];
+    pagination?: PaginationMeta;
   }>;
 }
 
-export async function getIncidents() {
+export async function getIncidents(options?: ListOptions) {
   const env = getClientEnv();
-  const response = await fetch(`${env.NEXT_PUBLIC_API_BASE_URL}/incidents`, {
-    cache: "no-store",
-  });
+  const params = buildPaginationSearchParams(options);
+  const response = await fetch(
+    `${env.NEXT_PUBLIC_API_BASE_URL}/incidents${params.toString() ? `?${params.toString()}` : ""}`,
+    {
+      cache: "no-store",
+    },
+  );
 
   const payload = await response.json();
 
@@ -359,15 +408,20 @@ export async function getIncidents() {
 
   return payload as ApiEnvelope<{
     incidents: IncidentRecord[];
+    pagination?: PaginationMeta;
   }>;
 }
 
-export async function getServerRemediations(serverId: string) {
+export async function getServerRemediations(serverId: string, options?: ListOptions) {
   const env = getClientEnv();
-  const response = await fetch(`${env.NEXT_PUBLIC_API_BASE_URL}/servers/${serverId}/remediations`, {
-    cache: "no-store",
-    credentials: "include",
-  });
+  const params = buildPaginationSearchParams(options);
+  const response = await fetch(
+    `${env.NEXT_PUBLIC_API_BASE_URL}/servers/${serverId}/remediations${params.toString() ? `?${params.toString()}` : ""}`,
+    {
+      cache: "no-store",
+      credentials: "include",
+    },
+  );
 
   const payload = await response.json();
 
@@ -377,6 +431,7 @@ export async function getServerRemediations(serverId: string) {
 
   return payload as ApiEnvelope<{
     runs: RemediationRunRecord[];
+    pagination?: PaginationMeta;
   }>;
 }
 

@@ -172,6 +172,24 @@ export function ServerDetailView({ server }: ServerDetailViewProps) {
     });
   }
 
+  function handleLoadIncidents() {
+    setError(null);
+    setStatusMessage(null);
+
+    startTransition(async () => {
+      try {
+        const payload = await getServerIncidents(server.id);
+        setIncidents(payload.data.incidents);
+      } catch (incidentError) {
+        setError(
+          incidentError instanceof Error
+            ? incidentError.message
+            : "Unable to load incidents",
+        );
+      }
+    });
+  }
+
   function handleRemediateIncident(incidentId: string, actionType: string) {
     setError(null);
     setStatusMessage(null);
@@ -380,23 +398,12 @@ export function ServerDetailView({ server }: ServerDetailViewProps) {
 
           <div className="border-t border-border pt-3">
             <div className="flex flex-wrap gap-2">
-              <Button disabled={isPending} onClick={async () => {
-                setError(null);
-                setStatusMessage(null);
-
-                startTransition(async () => {
-                  try {
-                    const payload = await getServerIncidents(server.id);
-                    setIncidents(payload.data.incidents);
-                  } catch (incidentError) {
-                    setError(
-                      incidentError instanceof Error
-                        ? incidentError.message
-                        : "Unable to load incidents",
-                    );
-                  }
-                });
-              }} type="button" variant="secondary">
+              <Button
+                disabled={isPending}
+                onClick={handleLoadIncidents}
+                type="button"
+                variant="secondary"
+              >
                 Load Incidents
               </Button>
             </div>
@@ -418,21 +425,23 @@ export function ServerDetailView({ server }: ServerDetailViewProps) {
                     </div>
                     {incident.status === "open" ? (
                       <div className="mt-3 flex flex-wrap gap-2">
-                        {incident.checkType === "host.uptime" ? (
-                          <>
-                            <Button disabled={isPending} onClick={() => handleRemediateIncident(incident.id, "restart.nginx")} type="button" variant="secondary">
-                              Restart Nginx
+                        {incident.remediation.allowedActions.length > 0 ? (
+                          incident.remediation.allowedActions.map((action) => (
+                            <Button
+                              disabled={isPending}
+                              key={action.actionType}
+                              onClick={() => handleRemediateIncident(incident.id, action.actionType)}
+                              type="button"
+                              variant={action.provider === "linode" ? "primary" : "secondary"}
+                            >
+                              {action.title}
                             </Button>
-                            <Button disabled={isPending} onClick={() => handleRemediateIncident(incident.id, "provider.reboot")} type="button">
-                              Reboot Provider
-                            </Button>
-                          </>
-                        ) : null}
-                        {incident.checkType === "host.disk.root" ? (
-                          <Button disabled={isPending} onClick={() => handleRemediateIncident(incident.id, "wordpress.cache.flush")} type="button" variant="secondary">
-                            Flush WP Cache
-                          </Button>
-                        ) : null}
+                          ))
+                        ) : (
+                          <div className="text-xs text-amber-700">
+                            {incident.remediation.reasons[0] ?? "No allowlisted remediations are available for this incident."}
+                          </div>
+                        )}
                       </div>
                     ) : null}
                     {incident.status === "remediation_pending" ? (
