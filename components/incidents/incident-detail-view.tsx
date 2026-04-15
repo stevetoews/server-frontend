@@ -5,12 +5,22 @@ import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { remediateIncident, type AuditLogRecord, type IncidentRecord, type RemediationRunRecord, type ServerRecord } from "@/lib/api";
+import {
+  remediateIncident,
+  type AuditLogRecord,
+  type HealthCheckRecord,
+  type IncidentRecord,
+  type PaginationMeta,
+  type RemediationRunRecord,
+  type ServerRecord,
+} from "@/lib/api";
 
 interface IncidentDetailViewProps {
   audits: AuditLogRecord[];
   incident: IncidentRecord;
   remediations: RemediationRunRecord[];
+  serverChecks: HealthCheckRecord[];
+  serverChecksPagination: PaginationMeta | null;
   server: ServerRecord;
 }
 
@@ -18,6 +28,8 @@ export function IncidentDetailView({
   audits,
   incident: initialIncident,
   remediations: initialRemediations,
+  serverChecks,
+  serverChecksPagination,
   server,
 }: IncidentDetailViewProps) {
   const router = useRouter();
@@ -118,8 +130,18 @@ export function IncidentDetailView({
               <div className="mt-2">{new Date(incident.openedAt).toLocaleString()}</div>
             </div>
             <div className="rounded-2xl border border-border bg-white/80 p-4 text-sm text-foreground">
-              <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Source check</div>
-              <div className="mt-2">{incident.checkType ?? "Unknown"}</div>
+              <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">
+                Source check
+              </div>
+              <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                <span>{incident.checkType ?? "Unknown"}</span>
+                <a
+                  className="rounded-full border border-border px-3 py-1 text-[11px] uppercase tracking-[0.22em] text-muted-foreground transition hover:border-primary/40 hover:text-foreground"
+                  href={`/servers/${server.id}#recent-checks`}
+                >
+                  View checks
+                </a>
+              </div>
             </div>
           </div>
 
@@ -159,21 +181,73 @@ export function IncidentDetailView({
           </div>
         </Card>
 
-        <Card className="space-y-3">
-          <h2 className="text-lg font-semibold text-foreground">Server</h2>
-          <div className="space-y-2 text-sm text-muted-foreground">
-            <p className="text-foreground">{server.name}</p>
-            <p>{server.hostname}</p>
-            <p>{server.environment}</p>
-            <p>{server.onboardingStatus}</p>
-          </div>
-          <a
-            className="inline-flex rounded-full border border-border px-4 py-2 text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground transition hover:border-primary/40 hover:text-foreground"
-            href={`/servers/${server.id}`}
-          >
-            Open server detail
-          </a>
-        </Card>
+        <div className="space-y-4">
+          <Card className="space-y-3">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-semibold text-foreground">Server checks</h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Latest checks for the source server.
+                </p>
+              </div>
+              <a
+                className="rounded-full border border-border px-3 py-1 text-[11px] uppercase tracking-[0.22em] text-muted-foreground transition hover:border-primary/40 hover:text-foreground"
+                href={`/servers/${server.id}#recent-checks`}
+              >
+                View all
+              </a>
+            </div>
+
+            <div className="space-y-2">
+              {serverChecks.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No recent checks loaded.</p>
+              ) : (
+                serverChecks.map((check) => (
+                  <a
+                    className="block rounded-2xl border border-border bg-white/80 p-3 text-sm text-foreground transition hover:border-primary/40 hover:bg-white"
+                    href={`/servers/${server.id}#recent-checks`}
+                    key={check.id}
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="space-y-1">
+                        <div className="font-medium">{check.checkType}</div>
+                        <div className="text-muted-foreground">{check.summary}</div>
+                      </div>
+                      <span className="rounded-full border border-border px-2 py-0.5 text-[11px] uppercase tracking-[0.24em] text-muted-foreground">
+                        {check.status}
+                      </span>
+                    </div>
+                    <div className="mt-2 text-xs text-muted-foreground">
+                      {new Date(check.createdAt).toLocaleString()}
+                    </div>
+                  </a>
+                ))
+              )}
+            </div>
+
+            {serverChecksPagination ? (
+              <p className="text-xs text-muted-foreground">
+                Showing {serverChecksPagination.returned} of {serverChecksPagination.total} checks.
+              </p>
+            ) : null}
+          </Card>
+
+          <Card className="space-y-3">
+            <h2 className="text-lg font-semibold text-foreground">Server</h2>
+            <div className="space-y-2 text-sm text-muted-foreground">
+              <p className="text-foreground">{server.name}</p>
+              <p>{server.hostname}</p>
+              <p>{server.environment}</p>
+              <p>{server.onboardingStatus}</p>
+            </div>
+            <a
+              className="inline-flex rounded-full border border-border px-4 py-2 text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground transition hover:border-primary/40 hover:text-foreground"
+              href={`/servers/${server.id}`}
+            >
+              Open server detail
+            </a>
+          </Card>
+        </div>
       </div>
 
       <div className="grid gap-4 xl:grid-cols-2">

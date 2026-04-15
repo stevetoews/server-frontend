@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 
-import { getIncident } from "@/lib/api";
+import { getIncident, getServerChecks } from "@/lib/api";
 import { IncidentDetailView } from "@/components/incidents/incident-detail-view";
 
 interface IncidentDetailPageProps {
@@ -18,12 +18,19 @@ export default async function IncidentDetailPage({ params }: IncidentDetailPageP
     });
 
     const { incident, server, audits, remediations } = payload.data;
+    const serverChecksPayload = await getServerChecks(server.id, {
+      limit: 3,
+      offset: 0,
+      cookie: cookieStore.toString(),
+    });
 
     return (
       <IncidentDetailView
         audits={audits}
         incident={incident}
         remediations={remediations}
+        serverChecks={serverChecksPayload.data.checks}
+        serverChecksPagination={serverChecksPayload.data.pagination ?? null}
         server={server}
       />
     );

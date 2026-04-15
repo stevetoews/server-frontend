@@ -430,13 +430,14 @@ export async function mapSpinupwpServer(input: {
   }>;
 }
 
-export async function getServerChecks(serverId: string, options?: ListOptions) {
+export async function getServerChecks(serverId: string, options?: ListOptions & { cookie?: string }) {
   const env = getClientEnv();
   const params = buildPaginationSearchParams(options);
   const response = await fetch(
     `${env.NEXT_PUBLIC_API_BASE_URL}/servers/${serverId}/checks${params.toString() ? `?${params.toString()}` : ""}`,
     {
       cache: "no-store",
+      headers: options?.cookie ? { cookie: options.cookie } : undefined,
       credentials: "include",
     },
   );
