@@ -65,7 +65,7 @@ function getActivitySourceHref(entry: ServerActivityItem) {
   }
 
   if (entry.payload.targetType === "server") {
-    return "#onboarding-state";
+    return "#server-information";
   }
 
   return "#activity-feed";
@@ -442,615 +442,624 @@ export function ServerDetailView({
         ))}
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
-        <Card id="server-information" className="space-y-4">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <h2 className="text-lg font-semibold text-foreground">Server information</h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Basic server identity first, then the onboarding gates below it.
-              </p>
-            </div>
-            <div className="rounded-full border border-border px-3 py-1 text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
-              {providerLabel}
-            </div>
+      <Card id="server-information" className="space-y-3">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold text-foreground">Server information</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Core identity and state. The operational cards come after this.
+            </p>
           </div>
-
-          <div className="grid gap-3 md:grid-cols-2">
-            <div className="rounded-2xl border border-border bg-white/80 p-4 text-sm text-foreground">
-              <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Identity</div>
-              <div className="mt-2 font-medium">{server.name}</div>
-              <div className="mt-1 text-muted-foreground">{server.hostname}</div>
-              <div className="mt-1 text-muted-foreground">
-                {server.environment} • {server.onboardingStatus}
-              </div>
-            </div>
-            <div className="rounded-2xl border border-border bg-white/80 p-4 text-sm text-foreground">
-              <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">SSH</div>
-              <div className="mt-2">
-                {server.sshUsername}@{server.ipAddress ?? server.hostname}:{server.sshPort}
-              </div>
-              <div className="mt-1 text-muted-foreground">Mode: {server.sshAuthMode}</div>
-            </div>
-            <div className="rounded-2xl border border-border bg-white/80 p-4 text-sm text-foreground">
-              <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Provider</div>
-              <div className="mt-2">
-                {server.providerMatch
-                  ? `${providerLabel} matched`
-                  : "Awaiting provider confirmation"}
-              </div>
-              <div className="mt-1 text-muted-foreground">
-                {server.providerMatch
-                  ? server.providerMatch.providerInstanceId
-                  : "Activation stays blocked until the provider is confirmed."}
-              </div>
-            </div>
-            <div className="rounded-2xl border border-border bg-white/80 p-4 text-sm text-foreground">
-              <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Timeline</div>
-              <div className="mt-2 text-foreground">
-                Created {new Date(server.createdAt).toLocaleString()}
-              </div>
-              <div className="mt-1 text-muted-foreground">
-                Updated {new Date(server.updatedAt).toLocaleString()}
-              </div>
-              <div className="mt-1 text-muted-foreground">
-                Latest activity{" "}
-                {latestActiveIncident
-                  ? `incident ${new Date(latestActiveIncident.openedAt).toLocaleString()}`
-                  : `server update ${new Date(server.updatedAt).toLocaleString()}`}
-              </div>
-            </div>
+          <div className="rounded-full border border-border px-3 py-1 text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
+            {providerLabel}
           </div>
-
-          {server.notes ? (
-            <div className="rounded-2xl border border-border bg-white/80 p-4 text-sm text-foreground">
-              <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">
-                Notes
-              </div>
-              <div className="mt-2">{server.notes}</div>
-            </div>
-          ) : null}
-
-          {statusMessage ? (
-            <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-              {statusMessage}
-            </div>
-          ) : null}
-
-          {error ? (
-            <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-              {error}
-            </div>
-          ) : null}
-
-          <div id="onboarding-state" className="space-y-3 rounded-2xl border border-border bg-white/80 p-4 text-sm text-foreground">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">
-                  Onboarding
-                </div>
-                <div className="mt-2">
-                  {server.spinupwpServerId
-                    ? `Mapped to ${server.spinupwpServerId}`
-                    : "Not mapped yet"}
-                </div>
-                <div className="mt-1 text-muted-foreground">
-                  This unlocks only after the primary provider is confirmed and the server is active.
-                </div>
-              </div>
-            </div>
-
-            <div className="flex flex-wrap gap-2">
-              <Button
-                disabled={!canConfirmProvider || isPending}
-                onClick={handleConfirmProviderMatch}
-                type="button"
-              >
-                {isPending ? "Confirming..." : "Confirm Provider Match"}
-              </Button>
-              <Button
-                disabled={!canLoadSpinupwp || isPending}
-                onClick={handleLoadSpinupwpCandidates}
-                type="button"
-                variant="secondary"
-              >
-                Load SpinupWP Servers
-              </Button>
-            </div>
-
-            {spinupwpCandidates.length > 0 ? (
-              <div className="space-y-3 border-t border-border pt-3">
-                <select
-                  className="h-12 w-full rounded-2xl border border-border bg-white px-4 text-sm"
-                  onChange={(event) => setSelectedSpinupwpServerId(event.target.value)}
-                  value={selectedSpinupwpServerId}
-                >
-                  <option value="" disabled>
-                    Select a SpinupWP server
-                  </option>
-                  {spinupwpCandidates.map((candidate) => (
-                    <option
-                      key={candidate.spinupwpServerId}
-                      value={candidate.spinupwpServerId}
-                    >
-                      {candidate.label} ({candidate.siteCount} sites)
-                    </option>
-                  ))}
-                </select>
-
-                <Button
-                  disabled={!canMapSpinupwp || isPending}
-                  onClick={handleMapSpinupwpServer}
-                  type="button"
-                >
-                  Map SpinupWP Server
-                </Button>
-              </div>
-            ) : null}
-          </div>
-        </Card>
-
-        <div className="space-y-4">
-          <Card id="recent-checks" className="space-y-3">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div>
-                <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">
-                  Recent Checks
-                </div>
-                <div className="mt-1 text-sm text-muted-foreground">
-                  {checksPagination ? (
-                    <span>
-                      Showing {checksPagination.offset + 1}-{checksPagination.offset + checksPagination.returned} of{" "}
-                      {checksPagination.total}
-                    </span>
-                  ) : (
-                    <span>Latest checks for this server</span>
-                  )}
-                </div>
-              </div>
-
-              <div className="flex flex-wrap gap-2">
-                <Button disabled={isPending} onClick={() => loadChecks(0)} type="button" variant="secondary">
-                  Refresh
-                </Button>
-                <Button disabled={isPending || !server.spinupwpServerId} onClick={handleRunChecks} type="button">
-                  Run Checks Now
-                </Button>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              {checks.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No recent checks loaded yet.</p>
-              ) : (
-                checks.map((check) =>
-                  (() => {
-                    const incidentHref = getActiveIncidentHref(incidents, check.checkType);
-
-                    const content = (
-                      <>
-                        <div className="flex flex-wrap items-start justify-between gap-3">
-                          <div className="space-y-1">
-                            <div className="font-medium">{check.checkType}</div>
-                            <div className="text-muted-foreground">{check.summary}</div>
-                          </div>
-                          {incidentHref ? (
-                            <span className="rounded-full border border-border px-2 py-0.5 text-[11px] uppercase tracking-[0.24em] text-muted-foreground">
-                              Active incident
-                            </span>
-                          ) : null}
-                        </div>
-                        <div className="mt-1 text-xs text-muted-foreground">
-                          {check.status} • {new Date(check.createdAt).toLocaleString()}
-                        </div>
-                      </>
-                    );
-
-                    if (incidentHref) {
-                      return (
-                        <a
-                          className="block rounded-2xl border border-border bg-white/80 p-3 text-sm text-foreground transition hover:border-primary/40 hover:bg-white"
-                          href={incidentHref}
-                          key={check.id}
-                        >
-                          {content}
-                        </a>
-                      );
-                    }
-
-                    return (
-                      <div
-                        className="rounded-2xl border border-border bg-white/80 p-3 text-sm text-foreground"
-                        key={check.id}
-                      >
-                        {content}
-                      </div>
-                    );
-                  })(),
-                )
-              )}
-            </div>
-
-            {checksPagination ? (
-              <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
-                <div>
-                  <span>{checksPagination.hasMore ? "More checks available" : "End of checks"}</span>
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    disabled={isPending || checksOffset === 0}
-                    onClick={() => loadChecks(Math.max(0, checksOffset - DETAIL_PAGE_SIZE))}
-                    type="button"
-                    variant="secondary"
-                  >
-                    Previous
-                  </Button>
-                  <Button
-                    disabled={isPending || !checksPagination.hasMore}
-                    onClick={() => loadChecks(checksOffset + DETAIL_PAGE_SIZE)}
-                    type="button"
-                    variant="secondary"
-                  >
-                    Next
-                  </Button>
-                </div>
-              </div>
-            ) : null}
-          </Card>
-
-          <Card id="server-incidents" className="space-y-3">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div>
-                <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">
-                  Incidents
-                </div>
-                <div className="mt-1 text-sm text-muted-foreground">
-                  {incidentsPagination ? (
-                    <span>
-                      Showing {incidentsPagination.offset + 1}-
-                      {incidentsPagination.offset + incidentsPagination.returned} of{" "}
-                      {incidentsPagination.total}
-                    </span>
-                  ) : (
-                    <span>Latest incidents for this server</span>
-                  )}
-                </div>
-              </div>
-
-              <Button
-                disabled={isPending}
-                onClick={() => loadIncidents(0)}
-                type="button"
-                variant="secondary"
-              >
-                Refresh
-              </Button>
-            </div>
-
-            <div className="space-y-2">
-              {incidents.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No incidents loaded yet.</p>
-              ) : (
-                incidents.map((incident) => (
-                  <div
-                    className="rounded-2xl border border-border bg-white/80 p-3 text-sm text-foreground"
-                    id={`incident-${incident.id}`}
-                    key={incident.id}
-                  >
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div className="space-y-1">
-                        <div className="font-medium">{incident.title}</div>
-                        <div className="text-muted-foreground">
-                          {incident.summary ?? "No summary"}
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          {incident.severity} • {incident.status} •{" "}
-                          {new Date(incident.openedAt).toLocaleString()}
-                        </div>
-                      </div>
-                      <a
-                        className="rounded-full border border-border px-3 py-1 text-[11px] uppercase tracking-[0.22em] text-muted-foreground transition hover:border-primary/40 hover:text-foreground"
-                        href={`/incidents/${incident.id}`}
-                      >
-                        Source
-                      </a>
-                    </div>
-                    {incident.status === "open" ? (
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        {incident.remediation.allowedActions.length > 0 ? (
-                          incident.remediation.allowedActions.map((action) => (
-                            <Button
-                              disabled={isPending}
-                              key={action.actionType}
-                              onClick={() => handleRemediateIncident(incident.id, action.actionType)}
-                              type="button"
-                              variant={action.provider === "linode" ? "primary" : "secondary"}
-                            >
-                              {action.title}
-                            </Button>
-                          ))
-                        ) : (
-                          <div className="text-xs text-amber-700">
-                            {incident.remediation.reasons[0] ??
-                              "No allowlisted remediations are available for this incident."}
-                          </div>
-                        )}
-                      </div>
-                    ) : null}
-                    {incident.status === "remediation_pending" ? (
-                      <div className="mt-3 text-xs text-amber-700">
-                        Remediation completed. Waiting for a healthy follow-up check before resolution.
-                      </div>
-                    ) : null}
-                  </div>
-                ))
-              )}
-            </div>
-
-            {incidentsPagination ? (
-              <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
-                <div>
-                  <span>{incidentsPagination.hasMore ? "More incidents available" : "End of incidents"}</span>
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    disabled={isPending || incidentsOffset === 0}
-                    onClick={() => loadIncidents(Math.max(0, incidentsOffset - DETAIL_PAGE_SIZE))}
-                    type="button"
-                    variant="secondary"
-                  >
-                    Previous
-                  </Button>
-                  <Button
-                    disabled={isPending || !incidentsPagination.hasMore}
-                    onClick={() => loadIncidents(incidentsOffset + DETAIL_PAGE_SIZE)}
-                    type="button"
-                    variant="secondary"
-                  >
-                    Next
-                  </Button>
-                </div>
-              </div>
-            ) : null}
-          </Card>
-
-          <Card id="remediation-runs" className="space-y-3">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div>
-                <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">
-                  Remediation Runs
-                </div>
-                <div className="mt-1 text-sm text-muted-foreground">
-                  {runsPagination ? (
-                    <span>
-                      Showing {runsPagination.offset + 1}-{runsPagination.offset + runsPagination.returned} of{" "}
-                      {runsPagination.total}
-                    </span>
-                  ) : (
-                    <span>Latest remediation runs for this server</span>
-                  )}
-                </div>
-              </div>
-
-              <Button disabled={isPending} onClick={() => loadRuns(0)} type="button" variant="secondary">
-                Refresh
-              </Button>
-            </div>
-
-            <div className="space-y-2">
-              {runs.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No remediation runs loaded yet.</p>
-              ) : (
-                runs.map((run) => (
-                  <div
-                    className="rounded-2xl border border-border bg-white/80 p-3 text-sm text-foreground"
-                    id={`remediation-${run.id}`}
-                    key={run.id}
-                  >
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div className="space-y-1">
-                        <div className="font-medium">{run.actionType}</div>
-                        <div className="text-muted-foreground">
-                          {run.outputSnippet ?? run.commandText ?? "No output"}
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          {run.provider} • {run.status} • {new Date(run.startedAt).toLocaleString()}
-                        </div>
-                      </div>
-                      <a
-                        className="rounded-full border border-border px-3 py-1 text-[11px] uppercase tracking-[0.22em] text-muted-foreground transition hover:border-primary/40 hover:text-foreground"
-                        href={`/incidents/${run.incidentId}#remediation-${run.id}`}
-                      >
-                        Source
-                      </a>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-
-            {runsPagination ? (
-              <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
-                <div>
-                  <span>{runsPagination.hasMore ? "More runs available" : "End of remediation history"}</span>
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    disabled={isPending || runsOffset === 0}
-                    onClick={() => loadRuns(Math.max(0, runsOffset - DETAIL_PAGE_SIZE))}
-                    type="button"
-                    variant="secondary"
-                  >
-                    Previous
-                  </Button>
-                  <Button
-                    disabled={isPending || !runsPagination.hasMore}
-                    onClick={() => loadRuns(runsOffset + DETAIL_PAGE_SIZE)}
-                    type="button"
-                    variant="secondary"
-                  >
-                    Next
-                  </Button>
-                </div>
-              </div>
-            ) : null}
-          </Card>
-
-          <Card id="activity-feed" className="space-y-3">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div>
-                <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">
-                  Activity Feed
-                </div>
-                <div className="mt-1 text-sm text-muted-foreground">
-                  {activityPagination ? (
-                    <span>
-                      Showing {activityPagination.offset + 1}-
-                      {activityPagination.offset + activityPagination.returned} of{" "}
-                      {activityPagination.total}
-                      {appliedActivityKindFilter !== "all" || appliedActivityEventType
-                        ? ` • filtered by ${[
-                            appliedActivityKindFilter !== "all" ? appliedActivityKindFilter : null,
-                            appliedActivityEventType || null,
-                          ]
-                            .filter(Boolean)
-                            .join(" / ")}`
-                        : ""}
-                    </span>
-                  ) : (
-                    <span>Chronological server activity</span>
-                  )}
-                </div>
-              </div>
-
-              <Button
-                disabled={isPending}
-                onClick={() => loadActivity(0)}
-                type="button"
-                variant="secondary"
-              >
-                Refresh
-              </Button>
-            </div>
-
-            <div className="grid gap-3 rounded-2xl border border-border bg-white/70 p-4 lg:grid-cols-[180px_minmax(0,1fr)_auto_auto]">
-              <label className="space-y-1 text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">
-                Kind
-                <select
-                  className="h-11 w-full rounded-xl border border-border bg-white px-3 text-sm font-normal uppercase tracking-normal text-foreground"
-                  onChange={(event) => setActivityKindFilter(event.target.value as ActivityKindFilter)}
-                  value={activityKindFilter}
-                >
-                  {ACTIVITY_KIND_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label className="space-y-1 text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">
-                Event type
-                <input
-                  className="h-11 w-full rounded-xl border border-border bg-white px-3 text-sm text-foreground placeholder:text-muted-foreground"
-                  onChange={(event) => setActivityEventType(event.target.value)}
-                  placeholder="e.g. restart.nginx"
-                  value={activityEventType}
-                />
-              </label>
-
-              <div className="flex items-end">
-                <Button disabled={isPending} onClick={handleApplyActivityFilters} type="button">
-                  Apply
-                </Button>
-              </div>
-
-              <div className="flex items-end">
-                <Button disabled={isPending} onClick={handleClearActivityFilters} type="button" variant="secondary">
-                  Clear
-                </Button>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              {activity.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  {appliedActivityKindFilter !== "all" || appliedActivityEventType
-                    ? "No activity matched the current filters."
-                    : "No activity loaded yet."}
-                </p>
-              ) : (
-                activity.map((entry) => (
-                  <a
-                    className="block rounded-2xl border border-border bg-white/80 p-3 text-sm text-foreground transition hover:border-primary/40 hover:bg-white"
-                    href={getActivitySourceHref(entry)}
-                    id={`activity-${entry.id}`}
-                    key={entry.id}
-                  >
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div>
-                        <div className="font-medium">
-                          {entry.kind === "audit"
-                            ? entry.payload.eventType
-                            : entry.kind === "incident"
-                              ? entry.payload.title
-                              : entry.payload.actionType}
-                        </div>
-                        <div className="text-muted-foreground">
-                          {entry.kind === "audit"
-                            ? `${entry.payload.actorType} • ${entry.payload.actorId}`
-                            : entry.kind === "incident"
-                              ? entry.payload.summary ?? "Incident opened"
-                              : entry.payload.outputSnippet ??
-                                entry.payload.commandText ??
-                                "Remediation run"}
-                        </div>
-                      </div>
-                      <div className="flex flex-col items-end gap-2">
-                        <span className="rounded-full border border-border px-2 py-0.5 text-[11px] uppercase tracking-[0.24em] text-muted-foreground">
-                          {entry.kind}
-                        </span>
-                        <span className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
-                          Open source
-                        </span>
-                      </div>
-                    </div>
-                    <div className="mt-2 text-xs text-muted-foreground">
-                      {new Date(entry.createdAt).toLocaleString()}
-                    </div>
-                  </a>
-                ))
-              )}
-            </div>
-
-            {activityPagination ? (
-              <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
-                <div>
-                  <span>{activityPagination.hasMore ? "More activity available" : "End of activity"}</span>
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    disabled={isPending || activityOffset === 0}
-                    onClick={() => loadActivity(Math.max(0, activityOffset - DETAIL_PAGE_SIZE))}
-                    type="button"
-                    variant="secondary"
-                  >
-                    Previous
-                  </Button>
-                  <Button
-                    disabled={isPending || !activityPagination.hasMore}
-                    onClick={() => loadActivity(activityOffset + DETAIL_PAGE_SIZE)}
-                    type="button"
-                    variant="secondary"
-                  >
-                    Next
-                  </Button>
-                </div>
-              </div>
-            ) : null}
-          </Card>
         </div>
-      </div>
+
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <div className="rounded-2xl border border-border bg-white/80 p-4 text-sm text-foreground">
+            <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Identity</div>
+            <div className="mt-2 font-medium">{server.name}</div>
+            <div className="mt-1 text-muted-foreground">{server.hostname}</div>
+            <div className="mt-1 text-muted-foreground">
+              {server.environment} • {server.onboardingStatus}
+            </div>
+          </div>
+          <div className="rounded-2xl border border-border bg-white/80 p-4 text-sm text-foreground">
+            <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">SSH</div>
+            <div className="mt-2">
+              {server.sshUsername}@{server.ipAddress ?? server.hostname}:{server.sshPort}
+            </div>
+            <div className="mt-1 text-muted-foreground">Mode: {server.sshAuthMode}</div>
+          </div>
+          <div className="rounded-2xl border border-border bg-white/80 p-4 text-sm text-foreground">
+            <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Provider</div>
+            <div className="mt-2">
+              {server.providerMatch ? `${providerLabel} matched` : "Awaiting provider confirmation"}
+            </div>
+            <div className="mt-1 text-muted-foreground">
+              {server.providerMatch
+                ? server.providerMatch.providerInstanceId
+                : "Activation stays blocked until the provider is confirmed."}
+            </div>
+          </div>
+          <div className="rounded-2xl border border-border bg-white/80 p-4 text-sm text-foreground">
+            <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Timeline</div>
+            <div className="mt-2 text-foreground">
+              Created {new Date(server.createdAt).toLocaleString()}
+            </div>
+            <div className="mt-1 text-muted-foreground">
+              Updated {new Date(server.updatedAt).toLocaleString()}
+            </div>
+            <div className="mt-1 text-muted-foreground">
+              Latest activity{" "}
+              {latestActiveIncident
+                ? `incident ${new Date(latestActiveIncident.openedAt).toLocaleString()}`
+                : `server update ${new Date(server.updatedAt).toLocaleString()}`}
+            </div>
+          </div>
+        </div>
+
+        {server.notes ? (
+          <div className="rounded-2xl border border-border bg-white/80 p-4 text-sm text-foreground">
+            <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Notes</div>
+            <div className="mt-2">{server.notes}</div>
+          </div>
+        ) : null}
+      </Card>
+
+      <Card id="onboarding-state" className="space-y-3">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">
+              Onboarding
+            </div>
+            <h2 className="mt-1 text-lg font-semibold text-foreground">Provider activation</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Compact gate for provider confirmation and SpinupWP mapping.
+            </p>
+          </div>
+          <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">
+            {server.spinupwpServerId ? "Mapped" : "Not mapped"}
+          </div>
+        </div>
+
+        {statusMessage ? (
+          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+            {statusMessage}
+          </div>
+        ) : null}
+
+        {error ? (
+          <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+            {error}
+          </div>
+        ) : null}
+
+        <div className="grid gap-3 md:grid-cols-2">
+          <div className="rounded-2xl border border-border bg-white/80 p-4 text-sm text-foreground">
+            <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Gate</div>
+            <div className="mt-2">
+              {server.providerMatch
+                ? `${providerLabel} ${Math.round(server.providerMatch.confidence * 100)}%`
+                : "Awaiting provider confirmation"}
+            </div>
+            <div className="mt-1 text-muted-foreground">
+              {server.providerMatch
+                ? server.providerMatch.providerInstanceId
+                : "Activation stays blocked until the provider is confirmed."}
+            </div>
+          </div>
+          <div className="rounded-2xl border border-border bg-white/80 p-4 text-sm text-foreground">
+            <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">
+              SpinupWP
+            </div>
+            <div className="mt-2">
+              {server.spinupwpServerId
+                ? `Mapped to ${server.spinupwpServerId}`
+                : "Not mapped yet"}
+            </div>
+            <div className="mt-1 text-muted-foreground">
+              This unlocks only after the primary provider is confirmed and the server is active.
+            </div>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          <Button
+            disabled={!canConfirmProvider || isPending}
+            onClick={handleConfirmProviderMatch}
+            type="button"
+          >
+            {isPending ? "Confirming..." : "Confirm Provider Match"}
+          </Button>
+          <Button
+            disabled={!canLoadSpinupwp || isPending}
+            onClick={handleLoadSpinupwpCandidates}
+            type="button"
+            variant="secondary"
+          >
+            Load SpinupWP Servers
+          </Button>
+        </div>
+
+        {spinupwpCandidates.length > 0 ? (
+          <div className="space-y-3 border-t border-border pt-3">
+            <select
+              className="h-12 w-full rounded-2xl border border-border bg-white px-4 text-sm"
+              onChange={(event) => setSelectedSpinupwpServerId(event.target.value)}
+              value={selectedSpinupwpServerId}
+            >
+              <option value="" disabled>
+                Select a SpinupWP server
+              </option>
+              {spinupwpCandidates.map((candidate) => (
+                <option key={candidate.spinupwpServerId} value={candidate.spinupwpServerId}>
+                  {candidate.label} ({candidate.siteCount} sites)
+                </option>
+              ))}
+            </select>
+
+            <Button
+              disabled={!canMapSpinupwp || isPending}
+              onClick={handleMapSpinupwpServer}
+              type="button"
+            >
+              Map SpinupWP Server
+            </Button>
+          </div>
+        ) : null}
+      </Card>
+
+      <Card id="recent-checks" className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">
+              Recent Checks
+            </div>
+            <div className="mt-1 text-sm text-muted-foreground">
+              {checksPagination ? (
+                <span>
+                  Showing {checksPagination.offset + 1}-{checksPagination.offset + checksPagination.returned} of{" "}
+                  {checksPagination.total}
+                </span>
+              ) : (
+                <span>Latest checks for this server</span>
+              )}
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <Button disabled={isPending} onClick={() => loadChecks(0)} type="button" variant="secondary">
+              Refresh
+            </Button>
+            <Button disabled={isPending || !server.spinupwpServerId} onClick={handleRunChecks} type="button">
+              Run Checks Now
+            </Button>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          {checks.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No recent checks loaded yet.</p>
+          ) : (
+            checks.map((check) =>
+              (() => {
+                const incidentHref = getActiveIncidentHref(incidents, check.checkType);
+
+                const content = (
+                  <>
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="space-y-1">
+                        <div className="font-medium">{check.checkType}</div>
+                        <div className="text-muted-foreground">{check.summary}</div>
+                      </div>
+                      {incidentHref ? (
+                        <span className="rounded-full border border-border px-2 py-0.5 text-[11px] uppercase tracking-[0.24em] text-muted-foreground">
+                          Active incident
+                        </span>
+                      ) : null}
+                    </div>
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      {check.status} • {new Date(check.createdAt).toLocaleString()}
+                    </div>
+                  </>
+                );
+
+                if (incidentHref) {
+                  return (
+                    <a
+                      className="block rounded-2xl border border-border bg-white/80 p-3 text-sm text-foreground transition hover:border-primary/40 hover:bg-white"
+                      href={incidentHref}
+                      key={check.id}
+                    >
+                      {content}
+                    </a>
+                  );
+                }
+
+                return (
+                  <div
+                    className="rounded-2xl border border-border bg-white/80 p-3 text-sm text-foreground"
+                    key={check.id}
+                  >
+                    {content}
+                  </div>
+                );
+              })(),
+            )
+          )}
+        </div>
+
+        {checksPagination ? (
+          <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+            <div>
+              <span>{checksPagination.hasMore ? "More checks available" : "End of checks"}</span>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                disabled={isPending || checksOffset === 0}
+                onClick={() => loadChecks(Math.max(0, checksOffset - DETAIL_PAGE_SIZE))}
+                type="button"
+                variant="secondary"
+              >
+                Previous
+              </Button>
+              <Button
+                disabled={isPending || !checksPagination.hasMore}
+                onClick={() => loadChecks(checksOffset + DETAIL_PAGE_SIZE)}
+                type="button"
+                variant="secondary"
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        ) : null}
+      </Card>
+
+      <Card id="server-incidents" className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Incidents</div>
+            <div className="mt-1 text-sm text-muted-foreground">
+              {incidentsPagination ? (
+                <span>
+                  Showing {incidentsPagination.offset + 1}-{incidentsPagination.offset + incidentsPagination.returned} of{" "}
+                  {incidentsPagination.total}
+                </span>
+              ) : (
+                <span>Latest incidents for this server</span>
+              )}
+            </div>
+          </div>
+
+          <Button
+            disabled={isPending}
+            onClick={() => loadIncidents(0)}
+            type="button"
+            variant="secondary"
+          >
+            Refresh
+          </Button>
+        </div>
+
+        <div className="space-y-2">
+          {incidents.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No incidents loaded yet.</p>
+          ) : (
+            incidents.map((incident) => (
+              <div
+                className="rounded-2xl border border-border bg-white/80 p-3 text-sm text-foreground"
+                id={`incident-${incident.id}`}
+                key={incident.id}
+              >
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="space-y-1">
+                    <div className="font-medium">{incident.title}</div>
+                    <div className="text-muted-foreground">{incident.summary ?? "No summary"}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {incident.severity} • {incident.status} • {new Date(incident.openedAt).toLocaleString()}
+                    </div>
+                  </div>
+                  <a
+                    className="rounded-full border border-border px-3 py-1 text-[11px] uppercase tracking-[0.22em] text-muted-foreground transition hover:border-primary/40 hover:text-foreground"
+                    href={`/incidents/${incident.id}`}
+                  >
+                    Source
+                  </a>
+                </div>
+                {incident.status === "open" ? (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {incident.remediation.allowedActions.length > 0 ? (
+                      incident.remediation.allowedActions.map((action) => (
+                        <Button
+                          disabled={isPending}
+                          key={action.actionType}
+                          onClick={() => handleRemediateIncident(incident.id, action.actionType)}
+                          type="button"
+                          variant={action.provider === "linode" ? "primary" : "secondary"}
+                        >
+                          {action.title}
+                        </Button>
+                      ))
+                    ) : (
+                      <div className="text-xs text-amber-700">
+                        {incident.remediation.reasons[0] ??
+                          "No allowlisted remediations are available for this incident."}
+                      </div>
+                    )}
+                  </div>
+                ) : null}
+                {incident.status === "remediation_pending" ? (
+                  <div className="mt-3 text-xs text-amber-700">
+                    Remediation completed. Waiting for a healthy follow-up check before resolution.
+                  </div>
+                ) : null}
+              </div>
+            ))
+          )}
+        </div>
+
+        {incidentsPagination ? (
+          <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+            <div>
+              <span>{incidentsPagination.hasMore ? "More incidents available" : "End of incidents"}</span>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                disabled={isPending || incidentsOffset === 0}
+                onClick={() => loadIncidents(Math.max(0, incidentsOffset - DETAIL_PAGE_SIZE))}
+                type="button"
+                variant="secondary"
+              >
+                Previous
+              </Button>
+              <Button
+                disabled={isPending || !incidentsPagination.hasMore}
+                onClick={() => loadIncidents(incidentsOffset + DETAIL_PAGE_SIZE)}
+                type="button"
+                variant="secondary"
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        ) : null}
+      </Card>
+
+      <Card id="remediation-runs" className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">
+              Remediation Runs
+            </div>
+            <div className="mt-1 text-sm text-muted-foreground">
+              {runsPagination ? (
+                <span>
+                  Showing {runsPagination.offset + 1}-{runsPagination.offset + runsPagination.returned} of{" "}
+                  {runsPagination.total}
+                </span>
+              ) : (
+                <span>Latest remediation runs for this server</span>
+              )}
+            </div>
+          </div>
+
+          <Button disabled={isPending} onClick={() => loadRuns(0)} type="button" variant="secondary">
+            Refresh
+          </Button>
+        </div>
+
+        <div className="space-y-2">
+          {runs.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No remediation runs loaded yet.</p>
+          ) : (
+            runs.map((run) => (
+              <div
+                className="rounded-2xl border border-border bg-white/80 p-3 text-sm text-foreground"
+                id={`remediation-${run.id}`}
+                key={run.id}
+              >
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="space-y-1">
+                    <div className="font-medium">{run.actionType}</div>
+                    <div className="text-muted-foreground">
+                      {run.outputSnippet ?? run.commandText ?? "No output"}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {run.provider} • {run.status} • {new Date(run.startedAt).toLocaleString()}
+                    </div>
+                  </div>
+                  <a
+                    className="rounded-full border border-border px-3 py-1 text-[11px] uppercase tracking-[0.22em] text-muted-foreground transition hover:border-primary/40 hover:text-foreground"
+                    href={`/incidents/${run.incidentId}#remediation-${run.id}`}
+                  >
+                    Source
+                  </a>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {runsPagination ? (
+          <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+            <div>
+              <span>{runsPagination.hasMore ? "More runs available" : "End of remediation history"}</span>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                disabled={isPending || runsOffset === 0}
+                onClick={() => loadRuns(Math.max(0, runsOffset - DETAIL_PAGE_SIZE))}
+                type="button"
+                variant="secondary"
+              >
+                Previous
+              </Button>
+              <Button
+                disabled={isPending || !runsPagination.hasMore}
+                onClick={() => loadRuns(runsOffset + DETAIL_PAGE_SIZE)}
+                type="button"
+                variant="secondary"
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        ) : null}
+      </Card>
+
+      <Card id="activity-feed" className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Activity Feed</div>
+            <div className="mt-1 text-sm text-muted-foreground">
+              {activityPagination ? (
+                <span>
+                  Showing {activityPagination.offset + 1}-
+                  {activityPagination.offset + activityPagination.returned} of{" "}
+                  {activityPagination.total}
+                  {appliedActivityKindFilter !== "all" || appliedActivityEventType
+                    ? ` • filtered by ${[
+                        appliedActivityKindFilter !== "all" ? appliedActivityKindFilter : null,
+                        appliedActivityEventType || null,
+                      ]
+                        .filter(Boolean)
+                        .join(" / ")}`
+                    : ""}
+                </span>
+              ) : (
+                <span>Chronological server activity</span>
+              )}
+            </div>
+          </div>
+
+          <Button
+            disabled={isPending}
+            onClick={() => loadActivity(0)}
+            type="button"
+            variant="secondary"
+          >
+            Refresh
+          </Button>
+        </div>
+
+        <div className="grid gap-3 rounded-2xl border border-border bg-white/70 p-4 lg:grid-cols-[180px_minmax(0,1fr)_auto_auto]">
+          <label className="space-y-1 text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">
+            Kind
+            <select
+              className="h-11 w-full rounded-xl border border-border bg-white px-3 text-sm font-normal uppercase tracking-normal text-foreground"
+              onChange={(event) => setActivityKindFilter(event.target.value as ActivityKindFilter)}
+              value={activityKindFilter}
+            >
+              {ACTIVITY_KIND_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="space-y-1 text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">
+            Event type
+            <input
+              className="h-11 w-full rounded-xl border border-border bg-white px-3 text-sm text-foreground placeholder:text-muted-foreground"
+              onChange={(event) => setActivityEventType(event.target.value)}
+              placeholder="e.g. restart.nginx"
+              value={activityEventType}
+            />
+          </label>
+
+          <div className="flex items-end">
+            <Button disabled={isPending} onClick={handleApplyActivityFilters} type="button">
+              Apply
+            </Button>
+          </div>
+
+          <div className="flex items-end">
+            <Button disabled={isPending} onClick={handleClearActivityFilters} type="button" variant="secondary">
+              Clear
+            </Button>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          {activity.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              {appliedActivityKindFilter !== "all" || appliedActivityEventType
+                ? "No activity matched the current filters."
+                : "No activity loaded yet."}
+            </p>
+          ) : (
+            activity.map((entry) => (
+              <a
+                className="block rounded-2xl border border-border bg-white/80 p-3 text-sm text-foreground transition hover:border-primary/40 hover:bg-white"
+                href={getActivitySourceHref(entry)}
+                id={`activity-${entry.id}`}
+                key={entry.id}
+              >
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <div className="font-medium">
+                      {entry.kind === "audit"
+                        ? entry.payload.eventType
+                        : entry.kind === "incident"
+                          ? entry.payload.title
+                          : entry.payload.actionType}
+                    </div>
+                    <div className="text-muted-foreground">
+                      {entry.kind === "audit"
+                        ? `${entry.payload.actorType} • ${entry.payload.actorId}`
+                        : entry.kind === "incident"
+                          ? entry.payload.summary ?? "Incident opened"
+                          : entry.payload.outputSnippet ??
+                            entry.payload.commandText ??
+                            "Remediation run"}
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-end gap-2">
+                    <span className="rounded-full border border-border px-2 py-0.5 text-[11px] uppercase tracking-[0.24em] text-muted-foreground">
+                      {entry.kind}
+                    </span>
+                    <span className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
+                      Open source
+                    </span>
+                  </div>
+                </div>
+                <div className="mt-2 text-xs text-muted-foreground">
+                  {new Date(entry.createdAt).toLocaleString()}
+                </div>
+              </a>
+            ))
+          )}
+        </div>
+
+        {activityPagination ? (
+          <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+            <div>
+              <span>{activityPagination.hasMore ? "More activity available" : "End of activity"}</span>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                disabled={isPending || activityOffset === 0}
+                onClick={() => loadActivity(Math.max(0, activityOffset - DETAIL_PAGE_SIZE))}
+                type="button"
+                variant="secondary"
+              >
+                Previous
+              </Button>
+              <Button
+                disabled={isPending || !activityPagination.hasMore}
+                onClick={() => loadActivity(activityOffset + DETAIL_PAGE_SIZE)}
+                type="button"
+                variant="secondary"
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        ) : null}
+      </Card>
     </div>
   );
 }
