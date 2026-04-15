@@ -52,6 +52,13 @@ const SECTION_LINKS = [
   { href: "#remediation-runs", label: "Remediations" },
   { href: "#activity-feed", label: "Activity" },
 ] as const;
+const TOP_CHECK_STRIP = [
+  { checkType: "host.uptime", label: "Uptime" },
+  { checkType: "host.disk.root", label: "Disk" },
+  { checkType: "service.nginx", label: "Nginx" },
+  { checkType: "service.sql", label: "SQL" },
+  { checkType: "service.phpfpm", label: "PHP-FPM" },
+] as const;
 
 interface ServerDetailViewProps {
   initialActivityEventType: string;
@@ -169,6 +176,20 @@ function getSiteTypeLabel(site: WordopsSiteRecord) {
   return site.appType;
 }
 
+function getSitePhpLabel(site: WordopsSiteRecord, wordops: WordopsOverview) {
+  if (site.phpVersion) {
+    return `PHP ${site.phpVersion}`;
+  }
+
+  const fallbackVersion = wordops.version;
+
+  if (fallbackVersion) {
+    return `Default (${fallbackVersion})`;
+  }
+
+  return "Default";
+}
+
 export function ServerDetailView({
   initialActivityEventType,
   initialActivityKindFilter,
@@ -236,6 +257,7 @@ export function ServerDetailView({
         : wordops.status === "ready"
           ? "Ready"
           : "Error";
+  const latestCheckByType = new Map(checks.map((check) => [check.checkType, check]));
 
   function handleSyncWordopsSites() {
     setError(null);
@@ -649,6 +671,26 @@ export function ServerDetailView({
 
         {server.providerSnapshot ? <LinodeStandardInfo server={server} /> : null}
 
+        <div className="flex flex-wrap gap-1.5 border-t border-border/70 pt-2">
+          {TOP_CHECK_STRIP.map((item) => {
+            const check = latestCheckByType.get(item.checkType);
+            const tone = check ? getCheckTone(check.status) : "neutral";
+
+            return (
+              <div
+                className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.18em] ${getToneClasses(tone)}`}
+                key={item.checkType}
+                title={check ? `${item.label}: ${check.summary}` : `${item.label}: waiting for check`}
+              >
+                <span>{item.label}</span>
+                <span className="text-[9px] opacity-80">
+                  {check ? check.status : "pending"}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+
         {server.notes ? (
           <div className="rounded-xl border border-border bg-white/75 p-3 text-sm text-foreground">
             <div className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">Notes</div>
@@ -707,54 +749,77 @@ export function ServerDetailView({
 
         {wordops.status === "ready" ? (
           <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-3 text-sm text-emerald-800">
-            <div className="font-medium">WordOps is ready for site management.</div>
-            <div className="mt-1 text-emerald-700">
-              Sync sites or create the first WordPress site from this card.
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <div className="font-medium">WordOps is ready for site management.</div>
+                <div className="mt-1 text-emerald-700">
+                  Sync sites or create the first WordPress site from this card.
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                <span className="rounded-full border border-emerald-200 bg-white/80 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-emerald-800">
+                  Live Sites {wordops.sites.length}
+                </span>
+                <span className="rounded-full border border-emerald-200 bg-white/80 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-emerald-800">
+                  Synced Sites {sites.length}
+                </span>
+              </div>
             </div>
           </div>
         ) : null}
 
-        <div className="grid gap-2 md:grid-cols-3">
-          <div className="rounded-xl border border-border bg-white/75 p-3 text-sm text-foreground">
-            <div className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
-              CLI
-            </div>
-            <div className="mt-1.5">
-              {wordops.installed ? "Installed" : "Missing"}
-            </div>
-            <div className="mt-1 text-muted-foreground">
-              {wordops.installed
-                ? wordops.version
-                  ? `WordOps ${wordops.version}`
-                  : "Command detected on the live server"
-                : "The `wo` command was not found on this server."}
-            </div>
-          </div>
-          <div className="rounded-xl border border-border bg-white/75 p-3 text-sm text-foreground">
-            <div className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
-              Live Sites
-            </div>
-            <div className="mt-1.5">
-              {wordops.sites.length}
-            </div>
-            <div className="mt-1 text-muted-foreground">
-              Parsed from `wo site list`
-            </div>
-          </div>
-          <div className="rounded-xl border border-border bg-white/75 p-3 text-sm text-foreground">
-            <div className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
-              Synced Sites
-            </div>
-            <div className="mt-1.5">
-              {sites.length}
-            </div>
-            <div className="mt-1 text-muted-foreground">
-              Stored locally for dashboard views
-            </div>
-          </div>
-        </div>
-
         <div className="flex flex-wrap gap-2">
+          <span
+            className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.18em] ${
+              wordops.installed
+                ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                : "border-amber-200 bg-amber-50 text-amber-800"
+            }`}
+          >
+            <span>CLI</span>
+            <span>{wordops.installed ? "installed" : "missing"}</span>
+            {wordops.version ? <span>{wordops.version}</span> : null}
+          </span>
+          <span
+            className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.18em] ${
+              wordops.stack.nginxInstalled
+                ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                : "border-amber-200 bg-amber-50 text-amber-800"
+            }`}
+          >
+            <span>Nginx</span>
+            <span>{wordops.stack.nginxInstalled ? "installed" : "missing"}</span>
+          </span>
+          <span
+            className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.18em] ${
+              wordops.stack.phpInstalled
+                ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                : "border-amber-200 bg-amber-50 text-amber-800"
+            }`}
+          >
+            <span>PHP</span>
+            <span>{wordops.stack.phpInstalled ? "installed" : "missing"}</span>
+          </span>
+          <span
+            className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.18em] ${
+              wordops.stack.mysqlInstalled
+                ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                : "border-amber-200 bg-amber-50 text-amber-800"
+            }`}
+          >
+            <span>SQL</span>
+            <span>{wordops.stack.mysqlInstalled ? "installed" : "missing"}</span>
+          </span>
+          <span
+            className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.18em] ${
+              wordops.stack.wpCliInstalled
+                ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                : "border-amber-200 bg-amber-50 text-amber-800"
+            }`}
+          >
+            <span>WP-CLI</span>
+            <span>{wordops.stack.wpCliInstalled ? "installed" : "missing"}</span>
+          </span>
           <Button
             disabled={isPending || !wordops.installed || wordopsReady}
             onClick={handleInstallWordopsStack}
@@ -765,25 +830,6 @@ export function ServerDetailView({
           <Button disabled={isPending || !wordopsReady} onClick={handleSyncWordopsSites} type="button">
             Sync Sites
           </Button>
-        </div>
-
-        <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4">
-          <div className="rounded-xl border border-border bg-white/75 p-3 text-sm text-foreground">
-            <div className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">Nginx</div>
-            <div className="mt-1.5">{wordops.stack.nginxInstalled ? "Installed" : "Missing"}</div>
-          </div>
-          <div className="rounded-xl border border-border bg-white/75 p-3 text-sm text-foreground">
-            <div className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">PHP</div>
-            <div className="mt-1.5">{wordops.stack.phpInstalled ? "Installed" : "Missing"}</div>
-          </div>
-          <div className="rounded-xl border border-border bg-white/75 p-3 text-sm text-foreground">
-            <div className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">SQL</div>
-            <div className="mt-1.5">{wordops.stack.mysqlInstalled ? "Installed" : "Missing"}</div>
-          </div>
-          <div className="rounded-xl border border-border bg-white/75 p-3 text-sm text-foreground">
-            <div className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">WP-CLI</div>
-            <div className="mt-1.5">{wordops.stack.wpCliInstalled ? "Installed" : "Missing"}</div>
-          </div>
         </div>
 
         <form className="space-y-3 rounded-xl border border-border bg-white/75 p-3" onSubmit={handleCreateWordopsSite}>
@@ -971,7 +1017,7 @@ export function ServerDetailView({
                   <div className="mt-3 grid gap-2 sm:grid-cols-2">
                     <div>
                       <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">PHP</div>
-                      <div className="mt-0.5 text-sm text-foreground">{site.phpVersion ? `PHP ${site.phpVersion}` : "Default"}</div>
+                      <div className="mt-0.5 text-sm text-foreground">{getSitePhpLabel(site, wordops)}</div>
                     </div>
                     <div>
                       <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">Cache</div>
