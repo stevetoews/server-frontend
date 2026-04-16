@@ -25,7 +25,7 @@ export default async function IncidentsPage() {
             Incident queue
           </h1>
           <p className="max-w-2xl text-sm text-muted-foreground">
-            Open incidents, remediation-pending cases, and resolved source records all live in one queue.
+            Open, pending, and resolved incidents stay here until an admin closes them.
           </p>
         </div>
 

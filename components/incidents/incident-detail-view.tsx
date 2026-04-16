@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
+  closeIncident,
   remediateIncident,
   type AuditLogRecord,
   type HealthCheckRecord,
@@ -66,6 +67,28 @@ export function IncidentDetailView({
           remediationError instanceof Error
             ? remediationError.message
             : "Unable to execute remediation",
+        );
+      }
+    });
+  }
+
+  function handleCloseIncident() {
+    setError(null);
+    setStatusMessage(null);
+
+    startTransition(async () => {
+      try {
+        const payload = await closeIncident(incident.id);
+
+        if (payload.data.incident) {
+          setIncident(payload.data.incident);
+        }
+
+        setStatusMessage("Incident closed.");
+        router.refresh();
+      } catch (closeError) {
+        setError(
+          closeError instanceof Error ? closeError.message : "Unable to close incident",
         );
       }
     });
@@ -173,9 +196,15 @@ export function IncidentDetailView({
               <p className="mt-2 text-sm text-amber-700">
                 Remediation completed. Waiting for a healthy follow-up check before resolution.
               </p>
+            ) : incident.status === "resolved" ? (
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Button disabled={isPending} onClick={handleCloseIncident} type="button" variant="secondary">
+                  Close Incident
+                </Button>
+              </div>
             ) : (
               <p className="mt-2 text-sm text-muted-foreground">
-                This incident is resolved.
+                This incident is closed.
               </p>
             )}
           </div>

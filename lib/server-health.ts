@@ -35,7 +35,9 @@ export function getIncidentTone(severity: IncidentRecord["severity"]): HealthTon
 }
 
 export function getServerHealthSummary(server: ServerRecord, incidents: IncidentRecord[]) {
-  const unresolved = incidents.filter((incident) => incident.status !== "resolved");
+  const unresolved = incidents.filter(
+    (incident) => incident.status === "open" || incident.status === "remediation_pending",
+  );
 
   if (unresolved.some((incident) => incident.severity === "critical")) {
     return {

@@ -203,7 +203,7 @@ export interface IncidentRecord {
   resolvedAt?: string;
   serverId: string;
   severity: "warning" | "critical";
-  status: "open" | "remediation_pending" | "resolved";
+  status: "open" | "remediation_pending" | "resolved" | "closed";
   summary?: string;
   title: string;
 }
@@ -1026,6 +1026,24 @@ export async function remediateIncident(input: {
   return payload as ApiEnvelope<{
     incidents: IncidentRecord[];
     runs: RemediationRunRecord[];
+  }>;
+}
+
+export async function closeIncident(incidentId: string) {
+  const env = getClientEnv();
+  const response = await fetch(`${env.NEXT_PUBLIC_API_BASE_URL}/incidents/${incidentId}/close`, {
+    method: "POST",
+    credentials: "include",
+  });
+
+  const payload = await response.json();
+
+  if (!response.ok) {
+    throw new Error(payload?.error?.message ?? "Unable to close incident");
+  }
+
+  return payload as ApiEnvelope<{
+    incident: IncidentRecord | null;
   }>;
 }
 

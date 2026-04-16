@@ -13,6 +13,7 @@ import {
   getToneClasses,
 } from "@/lib/server-health";
 import {
+  closeIncident,
   createServerWordopsSite,
   deleteServerWordopsSite,
   disableServerWordopsSite,
@@ -174,7 +175,9 @@ function getActiveIncidentHref(incidents: IncidentRecord[], checkType?: string) 
   }
 
   const activeIncident = incidents.find(
-    (incident) => incident.checkType === checkType && incident.status !== "resolved",
+    (incident) =>
+      incident.checkType === checkType &&
+      (incident.status === "open" || incident.status === "remediation_pending"),
   );
 
   return activeIncident ? `/incidents/${activeIncident.id}` : null;
@@ -278,7 +281,9 @@ export function ServerDetailView({
     : "Unmatched";
   const serverHealth = getServerHealthSummary(server, incidents);
   const displayedSites = sites.length > 0 ? sites : wordops.sites;
-  const unresolvedIncidents = incidents.filter((incident) => incident.status !== "resolved");
+  const unresolvedIncidents = incidents.filter(
+    (incident) => incident.status === "open" || incident.status === "remediation_pending",
+  );
   const openIncidentCount = incidents.filter((incident) => incident.status === "open").length;
   const pendingIncidentCount = incidents.filter(
     (incident) => incident.status === "remediation_pending",
@@ -645,6 +650,23 @@ export function ServerDetailView({
       } catch (runError) {
         setError(
           runError instanceof Error ? runError.message : "Unable to execute remediation",
+        );
+      }
+    });
+  }
+
+  function handleCloseIncident(incidentId: string) {
+    setError(null);
+    setStatusMessage(null);
+
+    startTransition(async () => {
+      try {
+        await closeIncident(incidentId);
+        await Promise.all([loadIncidents(0), loadRuns(runsOffset), loadActivity(activityOffset)]);
+        setStatusMessage("Incident closed.");
+      } catch (closeError) {
+        setError(
+          closeError instanceof Error ? closeError.message : "Unable to close incident",
         );
       }
     });
@@ -1346,6 +1368,18 @@ export function ServerDetailView({
                 {incident.status === "remediation_pending" ? (
                   <div className="mt-2 text-xs text-amber-200">
                     Remediation completed. Waiting for a healthy follow-up check before resolution.
+                  </div>
+                ) : null}
+                {incident.status === "resolved" ? (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <Button
+                      disabled={isPending}
+                      onClick={() => handleCloseIncident(incident.id)}
+                      type="button"
+                      variant="secondary"
+                    >
+                      Close
+                    </Button>
                   </div>
                 ) : null}
               </div>
