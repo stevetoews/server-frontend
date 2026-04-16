@@ -22,6 +22,7 @@ import {
   getServerChecks,
   getServerIncidents,
   getServerRemediations,
+  getServerWordops,
   installServerWordopsStack,
   remediateIncident,
   runServerChecks,
@@ -48,8 +49,8 @@ const ACTIVITY_KIND_OPTIONS = [
 const SECTION_LINKS = [
   { href: "#server-information", label: "Server Info" },
   { href: "#wordops", label: "WordOps" },
-  { href: "#recent-checks", label: "Checks" },
   { href: "#server-incidents", label: "Incidents" },
+  { href: "#recent-checks", label: "Checks" },
   { href: "#remediation-runs", label: "Remediations" },
   { href: "#activity-feed", label: "Activity" },
 ] as const;
@@ -82,9 +83,12 @@ interface ServerDetailViewProps {
   initialActivityKindFilter: ActivityKindFilter;
   initialActivity: ServerActivityItem[];
   initialActivityPagination: PaginationMeta | null;
+  initialChecks: HealthCheckRecord[];
+  initialChecksPagination: PaginationMeta | null;
   initialIncidents: IncidentRecord[];
   initialIncidentsPagination: PaginationMeta | null;
   initialSites: WordopsSiteRecord[];
+  initialWordopsDeferred?: boolean;
   initialWordops: WordopsOverview;
   server: ServerRecord;
 }
@@ -230,9 +234,12 @@ export function ServerDetailView({
   initialActivityKindFilter,
   initialActivity,
   initialActivityPagination,
+  initialChecks,
+  initialChecksPagination,
   initialIncidents,
   initialIncidentsPagination,
   initialSites,
+  initialWordopsDeferred = false,
   initialWordops,
   server,
 }: ServerDetailViewProps) {
@@ -242,6 +249,7 @@ export function ServerDetailView({
   const [error, setError] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [wordops, setWordops] = useState<WordopsOverview>(initialWordops);
+  const [isWordopsLoading, setIsWordopsLoading] = useState(initialWordopsDeferred);
   const [sites, setSites] = useState<WordopsSiteRecord[]>(initialSites);
   const [terminal, setTerminal] = useState<WordopsTerminalState | null>(null);
   const [showSiteAdvanced, setShowSiteAdvanced] = useState(false);
@@ -250,8 +258,9 @@ export function ServerDetailView({
     domain: "",
     letsEncrypt: true,
   });
-  const [checks, setChecks] = useState<HealthCheckRecord[]>([]);
-  const [checksPagination, setChecksPagination] = useState<PaginationMeta | null>(null);
+  const [checks, setChecks] = useState<HealthCheckRecord[]>(initialChecks);
+  const [checksPagination, setChecksPagination] =
+    useState<PaginationMeta | null>(initialChecksPagination);
   const [checksOffset, setChecksOffset] = useState(0);
   const [incidents, setIncidents] = useState<IncidentRecord[]>(initialIncidents);
   const [incidentsPagination, setIncidentsPagination] =
@@ -263,6 +272,8 @@ export function ServerDetailView({
   const [runs, setRuns] = useState<RemediationRunRecord[]>([]);
   const [runsPagination, setRunsPagination] = useState<PaginationMeta | null>(null);
   const [runsOffset, setRunsOffset] = useState(0);
+  const [hasLoadedRuns, setHasLoadedRuns] = useState(false);
+  const [showRunsSection, setShowRunsSection] = useState(false);
   const [activity, setActivity] = useState<ServerActivityItem[]>(initialActivity);
   const [activityPagination, setActivityPagination] =
     useState<PaginationMeta | null>(initialActivityPagination);
@@ -299,14 +310,18 @@ export function ServerDetailView({
   ).length;
   const visibleIncidents = showResolvedIncidents ? incidents : unresolvedIncidents;
   const wordopsTone =
-    wordops.status === "ready"
+    isWordopsLoading
+      ? "neutral"
+      : wordops.status === "ready"
       ? "good"
       : wordops.status === "missing" || wordops.status === "degraded"
         ? "warn"
         : "danger";
   const wordopsReady = wordops.status === "ready";
   const wordopsStatusLabel =
-    wordops.status === "missing"
+    isWordopsLoading
+      ? "Loading"
+      : wordops.status === "missing"
       ? "Not Found"
       : wordops.status === "degraded"
         ? "Stack Incomplete"
@@ -318,6 +333,7 @@ export function ServerDetailView({
   function handleSyncWordopsSites() {
     setError(null);
     setStatusMessage(null);
+    setIsWordopsLoading(false);
 
     startTransition(async () => {
       try {
@@ -338,6 +354,7 @@ export function ServerDetailView({
   function handleInstallWordopsStack() {
     setError(null);
     setStatusMessage(null);
+    setIsWordopsLoading(false);
     setTerminal({
       title: "Install Web Stack",
       commandText: "wo stack install --web",
@@ -374,6 +391,7 @@ export function ServerDetailView({
     event.preventDefault();
     setError(null);
     setStatusMessage(null);
+    setIsWordopsLoading(false);
     const pendingCommand = buildCreateSiteCommand(siteForm);
     setTerminal({
       title: "Create Site",
@@ -419,6 +437,7 @@ export function ServerDetailView({
   function handleMutateWordopsSite(domain: string, action: "enable" | "disable" | "delete") {
     setError(null);
     setStatusMessage(null);
+    setIsWordopsLoading(false);
     const commandText =
       action === "enable"
         ? `wo site enable ${domain}`
@@ -493,6 +512,31 @@ export function ServerDetailView({
     });
   }
 
+  function loadWordops() {
+    setIsWordopsLoading(true);
+
+    startTransition(async () => {
+      try {
+        const payload = await getServerWordops(server.id);
+        setWordops(payload.data.overview);
+      } catch {
+        setWordops({
+          installed: false,
+          sites: [],
+          stack: {
+            mysqlInstalled: false,
+            nginxInstalled: false,
+            phpInstalled: false,
+            wpCliInstalled: false,
+          },
+          status: "error",
+        });
+      } finally {
+        setIsWordopsLoading(false);
+      }
+    });
+  }
+
   function loadIncidents(offset = incidentsOffset) {
     setError(null);
     setStatusMessage(null);
@@ -529,6 +573,10 @@ export function ServerDetailView({
         setRuns(payload.data.runs);
         setRunsPagination(payload.data.pagination ?? null);
         setRunsOffset(offset);
+        setHasLoadedRuns(true);
+        if (payload.data.runs.some((run) => run.status !== "succeeded")) {
+          setShowRunsSection(true);
+        }
       } catch (runError) {
         setError(
           runError instanceof Error ? runError.message : "Unable to load remediation runs",
@@ -656,6 +704,8 @@ export function ServerDetailView({
         });
         setIncidents(payload.data.incidents);
         setRuns(payload.data.runs);
+        setHasLoadedRuns(true);
+        setShowRunsSection(true);
         setStatusMessage(`Executed ${getRemediationLabel(actionType)}.`);
       } catch (runError) {
         setError(
@@ -683,13 +733,39 @@ export function ServerDetailView({
   }
 
   useEffect(() => {
-    loadChecks(0);
-    loadIncidents(0);
-    loadRuns(0);
-    loadActivity(0);
-    // Load the default server detail slices on entry.
+    if (initialWordopsDeferred) {
+      loadWordops();
+    }
+    // Defer live WordOps SSH inspection until after first paint.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [server.id]);
+  }, [initialWordopsDeferred, server.id]);
+
+  useEffect(() => {
+    setChecks(initialChecks);
+    setChecksPagination(initialChecksPagination);
+    setChecksOffset(0);
+    setRuns([]);
+    setRunsPagination(null);
+    setRunsOffset(0);
+    setHasLoadedRuns(false);
+    setShowRunsSection(false);
+    // Checks are SSR-seeded. Runs stay lazy until needed.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [server.id, initialChecks, initialChecksPagination]);
+
+  useEffect(() => {
+    if (pendingIncidentCount > 0 || runs.some((run) => run.status !== "succeeded")) {
+      setShowRunsSection(true);
+    }
+  }, [pendingIncidentCount, runs]);
+
+  useEffect(() => {
+    if (pendingIncidentCount > 0 && !hasLoadedRuns) {
+      loadRuns(0);
+    }
+    // Pull run history only when there is active remediation state to explain.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingIncidentCount, hasLoadedRuns, server.id]);
 
   return (
     <div className="space-y-4">
@@ -866,6 +942,12 @@ export function ServerDetailView({
         {error ? (
           <div className="rounded-lg border border-rose-500/30 bg-rose-500/12 px-3 py-2 text-sm text-rose-200">
             {error}
+          </div>
+        ) : null}
+
+        {isWordopsLoading ? (
+          <div className="rounded-lg border border-border bg-card/70 px-3 py-2 text-sm text-muted-foreground">
+            Loading live WordOps status…
           </div>
         ) : null}
 
@@ -1214,118 +1296,6 @@ export function ServerDetailView({
         ) : null}
       </Card>
 
-      <Card id="recent-checks" className="space-y-2 p-4 md:p-5">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
-              Checks
-            </div>
-            {checksPagination ? (
-              <div className="text-xs text-muted-foreground">
-                {checksPagination.offset + 1}-{checksPagination.offset + checksPagination.returned} / {checksPagination.total}
-              </div>
-            ) : null}
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            <Button
-              disabled={isPending}
-              onClick={() => loadChecks(0)}
-              type="button"
-              variant="secondary"
-            >
-              Refresh
-            </Button>
-            <Button disabled={isPending} onClick={handleRunChecks} type="button">
-              Run Checks Now
-            </Button>
-          </div>
-        </div>
-
-        <div className="space-y-2">
-          {checks.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No recent checks loaded yet.</p>
-          ) : (
-            checks.map((check) =>
-              (() => {
-                const incidentHref = getActiveIncidentHref(incidents, check.checkType);
-
-                const content = (
-                      <>
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div className="space-y-1">
-                        <div className="font-medium">{getCheckLabel(check.checkType)}</div>
-                        <div className="text-muted-foreground">{check.summary}</div>
-                      </div>
-                      {incidentHref ? (
-                        <span className="rounded-full border border-amber-500/30 bg-amber-500/12 px-2 py-0.5 text-[11px] uppercase tracking-[0.24em] text-amber-200">
-                          Active incident
-                        </span>
-                      ) : null}
-                    </div>
-                    <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                      <span
-                        className={`rounded-full border px-2 py-0.5 uppercase tracking-[0.2em] ${getToneClasses(getCheckTone(check.status))}`}
-                      >
-                        {check.status}
-                      </span>
-                      <span>{new Date(check.createdAt).toLocaleString()}</span>
-                    </div>
-                  </>
-                );
-
-                if (incidentHref) {
-                  return (
-                    <a
-                      className="block rounded-lg border border-border bg-card/70 p-2.5 text-sm text-foreground transition hover:border-primary/40 hover:bg-accent/55"
-                      href={incidentHref}
-                      key={check.id}
-                    >
-                      {content}
-                    </a>
-                  );
-                }
-
-                return (
-                  <div
-                    className="rounded-lg border border-border bg-card/70 p-2.5 text-sm text-foreground"
-                    key={check.id}
-                  >
-                    {content}
-                  </div>
-                );
-              })(),
-            )
-          )}
-        </div>
-
-        {checksPagination ? (
-          <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
-            <div>
-              <span>{checksPagination.hasMore ? "More checks available" : "End of checks"}</span>
-            </div>
-            <div className="flex gap-2">
-              <Button
-                disabled={isPending || checksOffset === 0}
-                onClick={() => loadChecks(Math.max(0, checksOffset - DETAIL_PAGE_SIZE))}
-                type="button"
-                variant="secondary"
-              >
-                Previous
-              </Button>
-              <Button
-                disabled={isPending || !checksPagination.hasMore}
-                onClick={() => loadChecks(checksOffset + DETAIL_PAGE_SIZE)}
-                type="button"
-                variant="secondary"
-              >
-                Next
-              </Button>
-            </div>
-          </div>
-        ) : null}
-      </Card>
-
       <Card id="server-incidents" className="space-y-2 p-4 md:p-5">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex flex-wrap items-center gap-2">
@@ -1464,6 +1434,118 @@ export function ServerDetailView({
         ) : null}
       </Card>
 
+      <Card id="recent-checks" className="space-y-2 p-4 md:p-5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
+              Checks
+            </div>
+            {checksPagination ? (
+              <div className="text-xs text-muted-foreground">
+                {checksPagination.offset + 1}-{checksPagination.offset + checksPagination.returned} / {checksPagination.total}
+              </div>
+            ) : null}
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <Button
+              disabled={isPending}
+              onClick={() => loadChecks(0)}
+              type="button"
+              variant="secondary"
+            >
+              Refresh
+            </Button>
+            <Button disabled={isPending} onClick={handleRunChecks} type="button">
+              Run Checks Now
+            </Button>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          {checks.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No recent checks loaded yet.</p>
+          ) : (
+            checks.map((check) =>
+              (() => {
+                const incidentHref = getActiveIncidentHref(incidents, check.checkType);
+
+                const content = (
+                  <>
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="space-y-1">
+                        <div className="font-medium">{getCheckLabel(check.checkType)}</div>
+                        <div className="text-muted-foreground">{check.summary}</div>
+                      </div>
+                      {incidentHref ? (
+                        <span className="rounded-full border border-amber-500/30 bg-amber-500/12 px-2 py-0.5 text-[11px] uppercase tracking-[0.24em] text-amber-200">
+                          Active incident
+                        </span>
+                      ) : null}
+                    </div>
+                    <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                      <span
+                        className={`rounded-full border px-2 py-0.5 uppercase tracking-[0.2em] ${getToneClasses(getCheckTone(check.status))}`}
+                      >
+                        {check.status}
+                      </span>
+                      <span>{new Date(check.createdAt).toLocaleString()}</span>
+                    </div>
+                  </>
+                );
+
+                if (incidentHref) {
+                  return (
+                    <a
+                      className="block rounded-lg border border-border bg-card/70 p-2.5 text-sm text-foreground transition hover:border-primary/40 hover:bg-accent/55"
+                      href={incidentHref}
+                      key={check.id}
+                    >
+                      {content}
+                    </a>
+                  );
+                }
+
+                return (
+                  <div
+                    className="rounded-lg border border-border bg-card/70 p-2.5 text-sm text-foreground"
+                    key={check.id}
+                  >
+                    {content}
+                  </div>
+                );
+              })(),
+            )
+          )}
+        </div>
+
+        {checksPagination ? (
+          <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+            <div>
+              <span>{checksPagination.hasMore ? "More checks available" : "End of checks"}</span>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                disabled={isPending || checksOffset === 0}
+                onClick={() => loadChecks(Math.max(0, checksOffset - DETAIL_PAGE_SIZE))}
+                type="button"
+                variant="secondary"
+              >
+                Previous
+              </Button>
+              <Button
+                disabled={isPending || !checksPagination.hasMore}
+                onClick={() => loadChecks(checksOffset + DETAIL_PAGE_SIZE)}
+                type="button"
+                variant="secondary"
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        ) : null}
+      </Card>
+
       <Card id="remediation-runs" className="space-y-2 p-4 md:p-5">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex flex-wrap items-center gap-2">
@@ -1475,69 +1557,100 @@ export function ServerDetailView({
                 {runsPagination.offset + 1}-{runsPagination.offset + runsPagination.returned} / {runsPagination.total}
               </div>
             ) : null}
+            {runs.some((run) => run.status !== "succeeded") ? (
+              <div className="rounded-full border border-amber-500/30 bg-amber-500/12 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-amber-200">
+                Active
+              </div>
+            ) : null}
           </div>
 
-          <Button disabled={isPending} onClick={() => loadRuns(0)} type="button" variant="secondary">
-            Refresh
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              disabled={isPending}
+              onClick={() => {
+                setShowRunsSection((current) => {
+                  const next = !current;
+
+                  if (next && !hasLoadedRuns) {
+                    loadRuns(0);
+                  }
+
+                  return next;
+                });
+              }}
+              type="button"
+              variant="secondary"
+            >
+              {showRunsSection ? "Hide Runs" : "Show Runs"}
+            </Button>
+            {showRunsSection ? (
+              <Button disabled={isPending} onClick={() => loadRuns(0)} type="button" variant="secondary">
+                Refresh
+              </Button>
+            ) : null}
+          </div>
         </div>
 
-        <div className="space-y-2">
-          {runs.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No remediation runs loaded yet.</p>
-          ) : (
-            runs.map((run) => (
-              <div
-                className="rounded-lg border border-border bg-card/70 p-2.5 text-sm text-foreground"
-                id={`remediation-${run.id}`}
-                key={run.id}
-              >
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div className="space-y-1">
-                    <div className="font-medium">{getRemediationLabel(run.actionType)}</div>
-                    <div className="text-muted-foreground">
-                      {run.outputSnippet ?? run.commandText ?? "No output"}
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      {run.provider} • {run.status} • {new Date(run.startedAt).toLocaleString()}
+        {showRunsSection ? (
+          <>
+            <div className="space-y-2">
+              {runs.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No remediation runs loaded yet.</p>
+              ) : (
+                runs.map((run) => (
+                  <div
+                    className="rounded-lg border border-border bg-card/70 p-2.5 text-sm text-foreground"
+                    id={`remediation-${run.id}`}
+                    key={run.id}
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="space-y-1">
+                        <div className="font-medium">{getRemediationLabel(run.actionType)}</div>
+                        <div className="text-muted-foreground">
+                          {run.outputSnippet ?? run.commandText ?? "No output"}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {run.provider} • {run.status} • {new Date(run.startedAt).toLocaleString()}
+                        </div>
+                      </div>
+                      <a
+                        className="rounded-full border border-border px-3 py-1 text-[11px] uppercase tracking-[0.22em] text-muted-foreground transition hover:border-primary/40 hover:text-foreground"
+                        href={`/incidents/${run.incidentId}#remediation-${run.id}`}
+                      >
+                        Open
+                      </a>
                     </div>
                   </div>
-                  <a
-                    className="rounded-full border border-border px-3 py-1 text-[11px] uppercase tracking-[0.22em] text-muted-foreground transition hover:border-primary/40 hover:text-foreground"
-                    href={`/incidents/${run.incidentId}#remediation-${run.id}`}
+                ))
+              )}
+            </div>
+
+            {runsPagination ? (
+              <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+                <div>
+                  <span>{runsPagination.hasMore ? "More runs available" : "End of remediation history"}</span>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    disabled={isPending || runsOffset === 0}
+                    onClick={() => loadRuns(Math.max(0, runsOffset - DETAIL_PAGE_SIZE))}
+                    type="button"
+                    variant="secondary"
                   >
-                    Open
-                  </a>
+                    Previous
+                  </Button>
+                  <Button
+                    disabled={isPending || !runsPagination.hasMore}
+                    onClick={() => loadRuns(runsOffset + DETAIL_PAGE_SIZE)}
+                    type="button"
+                    variant="secondary"
+                  >
+                    Next
+                  </Button>
                 </div>
               </div>
-            ))
-          )}
-        </div>
-
-        {runsPagination ? (
-          <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
-            <div>
-              <span>{runsPagination.hasMore ? "More runs available" : "End of remediation history"}</span>
-            </div>
-            <div className="flex gap-2">
-              <Button
-                disabled={isPending || runsOffset === 0}
-                onClick={() => loadRuns(Math.max(0, runsOffset - DETAIL_PAGE_SIZE))}
-                type="button"
-                variant="secondary"
-              >
-                Previous
-              </Button>
-              <Button
-                disabled={isPending || !runsPagination.hasMore}
-                onClick={() => loadRuns(runsOffset + DETAIL_PAGE_SIZE)}
-                type="button"
-                variant="secondary"
-              >
-                Next
-              </Button>
-            </div>
-          </div>
+            ) : null}
+          </>
         ) : null}
       </Card>
 

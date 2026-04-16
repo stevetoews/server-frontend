@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { ServerDetailView } from "@/components/servers/server-detail-view";
-import { getServer, getServerActivity, getServerIncidents, getServerSites, getServerWordops } from "@/lib/api";
+import { getServer, getServerActivity, getServerChecks, getServerIncidents, getServerSites } from "@/lib/api";
 
 interface ServerDetailPageProps {
   params: Promise<{ id: string }>;
@@ -46,7 +46,12 @@ export default async function ServerDetailPage({ params, searchParams }: ServerD
   }
 
   const server = payload.data.server;
-  const [incidentsPayload, activityPayload, wordopsResult, sitesResult] = await Promise.all([
+  const [checksPayload, incidentsPayload, activityPayload, sitesResult] = await Promise.all([
+    getServerChecks(id, {
+      limit: 5,
+      offset: 0,
+      cookie: cookieStore.toString(),
+    }),
     getServerIncidents(id, {
       limit: 3,
       offset: 0,
@@ -59,23 +64,6 @@ export default async function ServerDetailPage({ params, searchParams }: ServerD
       ...(activityEventType ? { eventType: activityEventType } : {}),
       cookie: cookieStore.toString(),
     }),
-    getServerWordops(id, {
-      cookie: cookieStore.toString(),
-    }).catch(() => ({
-      data: {
-        overview: {
-          installed: false,
-          sites: [],
-          stack: {
-            mysqlInstalled: false,
-            nginxInstalled: false,
-            phpInstalled: false,
-            wpCliInstalled: false,
-          },
-          status: "error" as const,
-        },
-      },
-    })),
     getServerSites(id, {
       cookie: cookieStore.toString(),
     }).catch(() => ({
@@ -91,10 +79,23 @@ export default async function ServerDetailPage({ params, searchParams }: ServerD
       initialActivityKindFilter={activityKind}
       initialActivity={activityPayload.data.items}
       initialActivityPagination={activityPayload.data.pagination ?? null}
+      initialChecks={checksPayload.data.checks}
+      initialChecksPagination={checksPayload.data.pagination ?? null}
       initialIncidents={incidentsPayload.data.incidents}
       initialIncidentsPagination={incidentsPayload.data.pagination ?? null}
       initialSites={sitesResult.data.sites}
-      initialWordops={wordopsResult.data.overview}
+      initialWordops={{
+        installed: false,
+        sites: [],
+        stack: {
+          mysqlInstalled: false,
+          nginxInstalled: false,
+          phpInstalled: false,
+          wpCliInstalled: false,
+        },
+        status: "error",
+      }}
+      initialWordopsDeferred
       server={server}
     />
   );
