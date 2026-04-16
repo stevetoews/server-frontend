@@ -241,6 +241,7 @@ export function ServerDetailView({
   const [wordops, setWordops] = useState<WordopsOverview>(initialWordops);
   const [sites, setSites] = useState<WordopsSiteRecord[]>(initialSites);
   const [terminal, setTerminal] = useState<WordopsTerminalState | null>(null);
+  const [showSiteAdvanced, setShowSiteAdvanced] = useState(false);
   const [siteForm, setSiteForm] = useState<WordopsCreateSiteInput>({
     cacheProfile: "wp",
     domain: "",
@@ -266,6 +267,9 @@ export function ServerDetailView({
     useState<ActivityKindFilter>(initialActivityKindFilter);
   const [appliedActivityEventType, setAppliedActivityEventType] =
     useState(initialActivityEventType);
+  const [showActivityFilters, setShowActivityFilters] = useState(
+    initialActivityKindFilter !== "all" || initialActivityEventType.length > 0,
+  );
   const [activityOffset, setActivityOffset] = useState(0);
   const providerLabel = server.providerMatch
     ? server.providerMatch.providerKind === "linode"
@@ -909,12 +913,22 @@ export function ServerDetailView({
             <div className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
               New WordPress Site
             </div>
-            <Button disabled={isPending || !wordopsReady} type="submit">
-              Create Site
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                disabled={isPending}
+                onClick={() => setShowSiteAdvanced((current) => !current)}
+                type="button"
+                variant="secondary"
+              >
+                {showSiteAdvanced ? "Hide Advanced" : "Advanced"}
+              </Button>
+              <Button disabled={isPending || !wordopsReady} type="submit">
+                Create Site
+              </Button>
+            </div>
           </div>
 
-          <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4">
             <label className="space-y-1">
               <span className="text-[11px] font-medium text-foreground">Domain</span>
               <input
@@ -964,34 +978,6 @@ export function ServerDetailView({
                 <option value="8.3">PHP 8.3</option>
               </select>
             </label>
-            <label className="space-y-1">
-              <span className="text-[11px] font-medium text-foreground">Admin User</span>
-              <input
-                className="h-11 w-full rounded-lg border border-border bg-background/70 px-3 text-sm text-foreground"
-                onChange={(event) => setSiteForm((current) => ({ ...current, adminUser: event.target.value }))}
-                placeholder="admin"
-                value={siteForm.adminUser ?? ""}
-              />
-            </label>
-            <label className="space-y-1">
-              <span className="text-[11px] font-medium text-foreground">Admin Email</span>
-              <input
-                className="h-11 w-full rounded-lg border border-border bg-background/70 px-3 text-sm text-foreground"
-                onChange={(event) => setSiteForm((current) => ({ ...current, adminEmail: event.target.value }))}
-                placeholder="admin@example.com"
-                value={siteForm.adminEmail ?? ""}
-              />
-            </label>
-            <label className="space-y-1">
-              <span className="text-[11px] font-medium text-foreground">Admin Password</span>
-              <input
-                className="h-11 w-full rounded-lg border border-border bg-background/70 px-3 text-sm text-foreground"
-                onChange={(event) => setSiteForm((current) => ({ ...current, adminPassword: event.target.value }))}
-                placeholder="Optional"
-                type="password"
-                value={siteForm.adminPassword ?? ""}
-              />
-            </label>
           </div>
 
           <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
@@ -1009,55 +995,90 @@ export function ServerDetailView({
               />
               Let's Encrypt
             </label>
-            <label className="inline-flex items-center gap-2">
-              <input
-                checked={siteForm.hsts ?? false}
-                disabled={!(siteForm.letsEncrypt ?? false)}
-                onChange={(event) => setSiteForm((current) => ({ ...current, hsts: event.target.checked }))}
-                type="checkbox"
-              />
-              HSTS
-            </label>
-            <label className="inline-flex items-center gap-2">
-              <input
-                checked={siteForm.vhostOnly ?? false}
-                onChange={(event) => setSiteForm((current) => ({ ...current, vhostOnly: event.target.checked }))}
-                type="checkbox"
-              />
-              Vhost only
-            </label>
           </div>
+
+          {showSiteAdvanced ? (
+            <div className="grid gap-2 border-t border-border/70 pt-3 md:grid-cols-2 xl:grid-cols-3">
+              <label className="space-y-1">
+                <span className="text-[11px] font-medium text-foreground">Admin User</span>
+                <input
+                  className="h-11 w-full rounded-lg border border-border bg-background/70 px-3 text-sm text-foreground"
+                  onChange={(event) => setSiteForm((current) => ({ ...current, adminUser: event.target.value }))}
+                  placeholder="admin"
+                  value={siteForm.adminUser ?? ""}
+                />
+              </label>
+              <label className="space-y-1">
+                <span className="text-[11px] font-medium text-foreground">Admin Email</span>
+                <input
+                  className="h-11 w-full rounded-lg border border-border bg-background/70 px-3 text-sm text-foreground"
+                  onChange={(event) => setSiteForm((current) => ({ ...current, adminEmail: event.target.value }))}
+                  placeholder="admin@example.com"
+                  value={siteForm.adminEmail ?? ""}
+                />
+              </label>
+              <label className="space-y-1">
+                <span className="text-[11px] font-medium text-foreground">Admin Password</span>
+                <input
+                  className="h-11 w-full rounded-lg border border-border bg-background/70 px-3 text-sm text-foreground"
+                  onChange={(event) => setSiteForm((current) => ({ ...current, adminPassword: event.target.value }))}
+                  placeholder="Optional"
+                  type="password"
+                  value={siteForm.adminPassword ?? ""}
+                />
+              </label>
+              <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground md:col-span-2 xl:col-span-3">
+                <label className="inline-flex items-center gap-2">
+                  <input
+                    checked={siteForm.hsts ?? false}
+                    disabled={!(siteForm.letsEncrypt ?? false)}
+                    onChange={(event) => setSiteForm((current) => ({ ...current, hsts: event.target.checked }))}
+                    type="checkbox"
+                  />
+                  HSTS
+                </label>
+                <label className="inline-flex items-center gap-2">
+                  <input
+                    checked={siteForm.vhostOnly ?? false}
+                    onChange={(event) => setSiteForm((current) => ({ ...current, vhostOnly: event.target.checked }))}
+                    type="checkbox"
+                  />
+                  Vhost only
+                </label>
+              </div>
+            </div>
+          ) : null}
         </form>
 
-        <div className="rounded-xl border border-border bg-slate-950 px-3 py-3 text-xs text-slate-100">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="font-semibold uppercase tracking-[0.2em] text-slate-300">
-              Terminal
+        {terminal ? (
+          <div className="rounded-xl border border-border bg-slate-950 px-3 py-3 text-xs text-slate-100">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="font-semibold uppercase tracking-[0.2em] text-slate-300">
+                Terminal
+              </div>
+              <div
+                className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] ${
+                  terminal.status === "succeeded"
+                    ? "bg-emerald-500/15 text-emerald-200"
+                    : terminal.status === "failed"
+                      ? "bg-rose-500/15 text-rose-200"
+                      : "bg-slate-700 text-slate-200"
+                }`}
+              >
+                {terminal.status}
+              </div>
             </div>
-            <div
-              className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] ${
-                terminal?.status === "succeeded"
-                  ? "bg-emerald-500/15 text-emerald-200"
-                  : terminal?.status === "failed"
-                    ? "bg-rose-500/15 text-rose-200"
-                    : "bg-slate-700 text-slate-200"
-              }`}
-            >
-              {terminal?.status ?? "idle"}
+            <div className="mt-3 space-y-2">
+              <div className="text-[11px] text-slate-400">{terminal.title}</div>
+              <pre className="overflow-x-auto whitespace-pre-wrap rounded-lg border border-slate-800 bg-black/30 px-3 py-2 font-mono text-[12px] text-slate-100">
+                {terminal.commandText ? `$ ${terminal.commandText}` : "$"}
+              </pre>
+              <pre className="min-h-[96px] overflow-x-auto whitespace-pre-wrap rounded-lg border border-slate-800 bg-black/30 px-3 py-2 font-mono text-[12px] text-slate-200">
+                {terminal.output}
+              </pre>
             </div>
           </div>
-          <div className="mt-3 space-y-2">
-            <div className="text-[11px] text-slate-400">
-              {terminal?.title ?? "No WordOps command has been run from this page yet."}
-            </div>
-            <pre className="overflow-x-auto whitespace-pre-wrap rounded-lg border border-slate-800 bg-black/30 px-3 py-2 font-mono text-[12px] text-slate-100">
-              {terminal?.commandText ? `$ ${terminal.commandText}` : "$"}
-            </pre>
-            <pre className="min-h-[96px] overflow-x-auto whitespace-pre-wrap rounded-lg border border-slate-800 bg-black/30 px-3 py-2 font-mono text-[12px] text-slate-200">
-              {terminal?.output ?? "Waiting for a WordOps action..."}
-            </pre>
-          </div>
-        </div>
+        ) : null}
 
         {displayedSites.length > 0 ? (
           <div className="space-y-2 border-t border-border pt-3">
@@ -1073,31 +1094,21 @@ export function ServerDetailView({
               {displayedSites.map((site) => (
                 <div className="rounded-lg border border-border bg-card/70 p-3 text-sm text-foreground" key={`${site.domain}:${site.sitePath}`}>
                   <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <div className="font-medium">{site.domain}</div>
-                      <div className="mt-1 text-xs text-muted-foreground">{site.sitePath}</div>
+                    <div className="space-y-1">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <div className="font-medium">{site.domain}</div>
+                        <span className="rounded-full border border-border px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                          {getSiteTypeLabel(site)}
+                        </span>
+                        <span className="rounded-full border border-border bg-background/40 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                          {getSitePhpLabel(site, wordops)}
+                        </span>
+                        <span className="rounded-full border border-border bg-background/40 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                          {site.cacheType ?? "Standard"}
+                        </span>
+                      </div>
+                      <div className="text-xs text-muted-foreground">{site.sitePath}</div>
                     </div>
-                    <span className="rounded-full border border-border px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-                      {getSiteTypeLabel(site)}
-                    </span>
-                  </div>
-                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                    <div>
-                      <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">PHP</div>
-                      <div className="mt-0.5 text-sm text-foreground">{getSitePhpLabel(site, wordops)}</div>
-                    </div>
-                    <div>
-                      <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">Cache</div>
-                      <div className="mt-0.5 text-sm text-foreground">{site.cacheType ?? "Standard"}</div>
-                    </div>
-                  </div>
-                  <div className="mt-2 flex flex-wrap gap-1.5 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-                    {site.phpVersion ? (
-                        <span className="rounded-full border border-border bg-background/40 px-2 py-0.5">PHP {site.phpVersion}</span>
-                    ) : null}
-                    {site.cacheType ? (
-                        <span className="rounded-full border border-border bg-background/40 px-2 py-0.5">{site.cacheType}</span>
-                    ) : null}
                   </div>
                   <div className="mt-3 flex flex-wrap gap-2">
                     <Button
@@ -1132,11 +1143,14 @@ export function ServerDetailView({
         ) : null}
 
         {wordops.infoOutput ? (
-          <div className="rounded-xl border border-border bg-slate-950 px-3 py-3 text-xs text-slate-100">
-            <pre className="overflow-x-auto whitespace-pre-wrap font-mono">
+          <details className="rounded-lg border border-border bg-card/70 px-3 py-2 text-xs text-muted-foreground">
+            <summary className="cursor-pointer list-none font-medium uppercase tracking-[0.18em]">
+              Raw WordOps Info
+            </summary>
+            <pre className="mt-3 overflow-x-auto whitespace-pre-wrap rounded-lg border border-slate-800 bg-slate-950 px-3 py-3 font-mono text-[12px] text-slate-200">
               {wordops.infoOutput}
             </pre>
-          </div>
+          </details>
         ) : null}
       </Card>
 
@@ -1468,6 +1482,14 @@ export function ServerDetailView({
 
           <Button
             disabled={isPending}
+            onClick={() => setShowActivityFilters((current) => !current)}
+            type="button"
+            variant="secondary"
+          >
+            {showActivityFilters ? "Hide Filters" : "Filters"}
+          </Button>
+          <Button
+            disabled={isPending}
             onClick={() => loadActivity(0)}
             type="button"
             variant="secondary"
@@ -1476,44 +1498,46 @@ export function ServerDetailView({
           </Button>
         </div>
 
-        <div className="grid gap-2 rounded-lg border border-border bg-card/70 p-3 lg:grid-cols-[160px_minmax(0,1fr)_auto_auto]">
-          <label className="space-y-1 text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">
-            Kind
-            <select
-              className="h-10 w-full rounded-lg border border-border bg-background/70 px-3 text-sm font-normal uppercase tracking-normal text-foreground"
-              onChange={(event) => setActivityKindFilter(event.target.value as ActivityKindFilter)}
-              value={activityKindFilter}
-            >
-              {ACTIVITY_KIND_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
+        {showActivityFilters ? (
+          <div className="grid gap-2 rounded-lg border border-border bg-card/70 p-3 lg:grid-cols-[160px_minmax(0,1fr)_auto_auto]">
+            <label className="space-y-1 text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">
+              Kind
+              <select
+                className="h-10 w-full rounded-lg border border-border bg-background/70 px-3 text-sm font-normal uppercase tracking-normal text-foreground"
+                onChange={(event) => setActivityKindFilter(event.target.value as ActivityKindFilter)}
+                value={activityKindFilter}
+              >
+                {ACTIVITY_KIND_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
 
-          <label className="space-y-1 text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">
-            Event type
-            <input
-              className="h-10 w-full rounded-lg border border-border bg-background/70 px-3 text-sm text-foreground placeholder:text-muted-foreground"
-              onChange={(event) => setActivityEventType(event.target.value)}
-              placeholder="e.g. restart.nginx"
-              value={activityEventType}
-            />
-          </label>
+            <label className="space-y-1 text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">
+              Event type
+              <input
+                className="h-10 w-full rounded-lg border border-border bg-background/70 px-3 text-sm text-foreground placeholder:text-muted-foreground"
+                onChange={(event) => setActivityEventType(event.target.value)}
+                placeholder="e.g. restart.nginx"
+                value={activityEventType}
+              />
+            </label>
 
-          <div className="flex items-end">
-            <Button disabled={isPending} onClick={handleApplyActivityFilters} type="button">
-              Apply
-            </Button>
+            <div className="flex items-end">
+              <Button disabled={isPending} onClick={handleApplyActivityFilters} type="button">
+                Apply
+              </Button>
+            </div>
+
+            <div className="flex items-end">
+              <Button disabled={isPending} onClick={handleClearActivityFilters} type="button" variant="secondary">
+                Clear
+              </Button>
+            </div>
           </div>
-
-          <div className="flex items-end">
-            <Button disabled={isPending} onClick={handleClearActivityFilters} type="button" variant="secondary">
-              Clear
-            </Button>
-          </div>
-        </div>
+        ) : null}
 
         <div className="space-y-2">
           {activity.length === 0 ? (
