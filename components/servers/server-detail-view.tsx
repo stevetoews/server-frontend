@@ -204,7 +204,7 @@ function getSitePhpLabel(site: WordopsSiteRecord, wordops: WordopsOverview) {
     return `PHP ${site.phpVersion}`;
   }
 
-  const fallbackVersion = wordops.infoOutput?.match(/php[^0-9]*([0-9]+\.[0-9]+)/i)?.[1];
+  const fallbackVersion = wordops.infoOutput?.match(/\bPHP\s*\(([0-9]+\.[0-9]+)/)?.[1];
 
   if (fallbackVersion) {
     return `PHP ${fallbackVersion}`;
@@ -1245,9 +1245,11 @@ export function ServerDetailView({
                         <span className="rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-primary">
                           {getSitePhpLabel(site, wordops)}
                         </span>
-                        <span className="rounded-full border border-border bg-background/40 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-                          {site.cacheType ?? "Standard"}
-                        </span>
+                        {site.cacheType ? (
+                          <span className="rounded-full border border-border bg-background/40 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                            {site.cacheType}
+                          </span>
+                        ) : null}
                       </div>
                       <div className="text-xs text-muted-foreground">{site.sitePath}</div>
                     </div>
