@@ -137,7 +137,9 @@ export interface WordopsSiteRecord {
   id?: string;
   phpVersion?: string;
   serverId?: string;
+  siteEnabled?: boolean;
   sitePath: string;
+  sslEnabled?: boolean;
   updatedAt?: string;
 }
 

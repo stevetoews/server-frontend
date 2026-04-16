@@ -258,6 +258,26 @@ function getSiteTypeLabel(site: WordopsSiteRecord) {
   return site.appType;
 }
 
+function getSiteCacheLabel(site: WordopsSiteRecord) {
+  if (!site.cacheType) {
+    return null;
+  }
+
+  return site.cacheType === "wp"
+    ? "WP"
+    : site.cacheType === "wpfc"
+      ? "FastCGI"
+      : site.cacheType === "wpredis"
+        ? "Redis"
+        : site.cacheType === "wpsc"
+          ? "Super Cache"
+          : site.cacheType === "wprocket"
+            ? "WP Rocket"
+            : site.cacheType === "wpce"
+              ? "Cache Enabler"
+              : site.cacheType;
+}
+
 function getSitePhpLabel(site: WordopsSiteRecord, wordops: WordopsOverview) {
   if (site.phpVersion) {
     return `PHP ${site.phpVersion}`;
@@ -286,6 +306,20 @@ function getRemediationLabel(actionType?: string) {
   }
 
   return REMEDIATION_LABELS[actionType] ?? actionType;
+}
+
+function getLatestSiteSyncAt(sites: WordopsSiteRecord[]) {
+  const timestamps = sites
+    .map((site) => site.updatedAt ?? site.createdAt)
+    .filter((value): value is string => Boolean(value))
+    .map((value) => new Date(value).getTime())
+    .filter((value) => Number.isFinite(value));
+
+  if (timestamps.length === 0) {
+    return null;
+  }
+
+  return new Date(Math.max(...timestamps)).toISOString();
 }
 
 export function ServerDetailView({
@@ -379,6 +413,7 @@ export function ServerDetailView({
         ? "warn"
         : "danger";
   const wordopsReady = wordops.status === "ready";
+  const latestSiteSyncAt = getLatestSiteSyncAt(sites);
   const wordopsStatusLabel =
     isWordopsLoading
       ? "Loading"
@@ -1091,6 +1126,11 @@ export function ServerDetailView({
                 <span className="rounded-full border border-emerald-500/30 bg-card/80 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-emerald-200">
                   Synced Sites {sites.length}
                 </span>
+                {latestSiteSyncAt ? (
+                  <span className="rounded-full border border-emerald-500/30 bg-card/80 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-emerald-200">
+                    Last Sync {new Date(latestSiteSyncAt).toLocaleString()}
+                  </span>
+                ) : null}
               </div>
             </div>
           </div>
@@ -1362,13 +1402,40 @@ export function ServerDetailView({
                         <span className="rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-primary">
                           {getSitePhpLabel(site, wordops)}
                         </span>
-                        {site.cacheType ? (
+                        {getSiteCacheLabel(site) ? (
                           <span className="rounded-full border border-border bg-background/40 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-                            {site.cacheType}
+                            {getSiteCacheLabel(site)}
+                          </span>
+                        ) : null}
+                        {site.sslEnabled !== undefined ? (
+                          <span
+                            className={`rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] ${
+                              site.sslEnabled
+                                ? "border-emerald-500/30 bg-emerald-500/12 text-emerald-200"
+                                : "border-border bg-background/40 text-muted-foreground"
+                            }`}
+                          >
+                            {site.sslEnabled ? "SSL On" : "SSL Off"}
+                          </span>
+                        ) : null}
+                        {site.siteEnabled !== undefined ? (
+                          <span
+                            className={`rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] ${
+                              site.siteEnabled
+                                ? "border-emerald-500/30 bg-emerald-500/12 text-emerald-200"
+                                : "border-amber-500/30 bg-amber-500/12 text-amber-200"
+                            }`}
+                          >
+                            {site.siteEnabled ? "Enabled" : "Disabled"}
                           </span>
                         ) : null}
                       </div>
                       <div className="text-xs text-muted-foreground">{site.sitePath}</div>
+                      {site.updatedAt || site.createdAt ? (
+                        <div className="text-[11px] text-muted-foreground">
+                          Synced {new Date(site.updatedAt ?? site.createdAt ?? "").toLocaleString()}
+                        </div>
+                      ) : null}
                     </div>
                   </div>
                   <div className="mt-3 flex flex-wrap gap-2">
