@@ -60,6 +60,22 @@ const TOP_CHECK_STRIP = [
   { checkType: "service.phpfpm", label: "PHP-FPM" },
 ] as const;
 
+const CHECK_LABELS: Record<string, string> = {
+  "host.disk.root": "Disk",
+  "host.uptime": "Uptime",
+  "service.nginx": "Nginx",
+  "service.phpfpm": "PHP-FPM",
+  "service.sql": "SQL",
+};
+
+const REMEDIATION_LABELS: Record<string, string> = {
+  "provider.reboot": "Reboot Server",
+  "restart.nginx": "Restart Nginx",
+  "restart.phpfpm": "Restart PHP-FPM",
+  "restart.sql": "Restart SQL",
+  "wordpress.cache.flush": "Flush Cache",
+};
+
 interface ServerDetailViewProps {
   initialActivityEventType: string;
   initialActivityKindFilter: ActivityKindFilter;
@@ -190,6 +206,22 @@ function getSitePhpLabel(site: WordopsSiteRecord, wordops: WordopsOverview) {
   return "Default";
 }
 
+function getCheckLabel(checkType?: string) {
+  if (!checkType) {
+    return "Check";
+  }
+
+  return CHECK_LABELS[checkType] ?? checkType;
+}
+
+function getRemediationLabel(actionType?: string) {
+  if (!actionType) {
+    return "Remediation";
+  }
+
+  return REMEDIATION_LABELS[actionType] ?? actionType;
+}
+
 export function ServerDetailView({
   initialActivityEventType,
   initialActivityKindFilter,
@@ -242,6 +274,11 @@ export function ServerDetailView({
     : "Unmatched";
   const serverHealth = getServerHealthSummary(server, incidents);
   const displayedSites = sites.length > 0 ? sites : wordops.sites;
+  const unresolvedIncidents = incidents.filter((incident) => incident.status !== "resolved");
+  const openIncidentCount = incidents.filter((incident) => incident.status === "open").length;
+  const pendingIncidentCount = incidents.filter(
+    (incident) => incident.status === "remediation_pending",
+  ).length;
   const wordopsTone =
     wordops.status === "ready"
       ? "good"
@@ -600,7 +637,7 @@ export function ServerDetailView({
         });
         setIncidents(payload.data.incidents);
         setRuns(payload.data.runs);
-        setStatusMessage(`Executed allowlisted remediation: ${actionType}`);
+        setStatusMessage(`Executed ${getRemediationLabel(actionType)}.`);
       } catch (runError) {
         setError(
           runError instanceof Error ? runError.message : "Unable to execute remediation",
@@ -620,42 +657,18 @@ export function ServerDetailView({
 
   return (
     <div className="space-y-4">
-      <div className="space-y-1">
-        <p className="text-xs font-semibold uppercase tracking-[0.35em] text-muted-foreground">
-          Server Detail
-        </p>
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">{server.name}</h1>
-        <p className="text-sm text-muted-foreground">
-          {server.hostname} • {server.environment} • onboarding status: {server.onboardingStatus}
-        </p>
-      </div>
-
-      <div className="flex flex-wrap gap-2">
-        {SECTION_LINKS.map((link) => (
-          <a
-            className="rounded-full border border-border bg-card/70 px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground transition hover:border-primary/40 hover:text-foreground"
-            href={link.href}
-            key={link.href}
-          >
-            {link.label}
-          </a>
-        ))}
-      </div>
-
       <Card id="server-information" className="space-y-3 p-4 md:p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="space-y-1">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
-              Server Details
-            </p>
-            <h2 className="text-base font-semibold text-foreground">{server.name}</h2>
+            <h1 className="text-xl font-semibold tracking-tight text-foreground">{server.name}</h1>
             <p className="text-sm text-muted-foreground">
               {server.hostname}
               {server.ipAddress ? ` • ${server.ipAddress}` : ""}
             </p>
-            <p className="text-xs text-muted-foreground">
-              {server.environment} • {server.sshUsername}@{server.ipAddress ?? server.hostname}:{server.sshPort}
-            </p>
+            <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+              <span>{server.environment}</span>
+              <span>{server.sshUsername}@{server.ipAddress ?? server.hostname}:{server.sshPort}</span>
+            </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <div
@@ -665,6 +678,9 @@ export function ServerDetailView({
             </div>
             <div className="rounded-full border border-border px-2.5 py-1 text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
               {providerLabel}
+            </div>
+            <div className="rounded-full border border-border px-2.5 py-1 text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+              {server.onboardingStatus}
             </div>
           </div>
         </div>
@@ -691,6 +707,30 @@ export function ServerDetailView({
           })}
         </div>
 
+        <div className="flex flex-wrap gap-1.5 border-t border-border/70 pt-2">
+          <div className="rounded-full border border-border bg-card/70 px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+            Open Incidents {openIncidentCount}
+          </div>
+          <div className="rounded-full border border-border bg-card/70 px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+            Pending {pendingIncidentCount}
+          </div>
+          <div className="rounded-full border border-border bg-card/70 px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+            Sites {displayedSites.length}
+          </div>
+        </div>
+
+        <div className="flex flex-wrap gap-2 border-t border-border/70 pt-2">
+          {SECTION_LINKS.map((link) => (
+            <a
+              className="rounded-full border border-border bg-card/70 px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground transition hover:border-primary/40 hover:text-foreground"
+              href={link.href}
+              key={link.href}
+            >
+              {link.label}
+            </a>
+          ))}
+        </div>
+
         {server.notes ? (
           <div className="rounded-lg border border-border bg-card/70 p-3 text-sm text-foreground">
             <div className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">Notes</div>
@@ -699,16 +739,59 @@ export function ServerDetailView({
         ) : null}
       </Card>
 
+      {unresolvedIncidents.length > 0 ? (
+        <Card id="server-attention" className="space-y-3 p-4 md:p-5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
+              Attention
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              <div className="rounded-full border border-rose-500/30 bg-rose-500/12 px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-rose-200">
+                Open {openIncidentCount}
+              </div>
+              <div className="rounded-full border border-amber-500/30 bg-amber-500/12 px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-amber-200">
+                Pending {pendingIncidentCount}
+              </div>
+            </div>
+          </div>
+
+          <div className="grid gap-2 md:grid-cols-2">
+            {unresolvedIncidents.slice(0, 2).map((incident) => (
+              <div className="rounded-lg border border-border bg-card/70 p-3 text-sm text-foreground" key={incident.id}>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="space-y-1">
+                    <div className="font-medium">{incident.title}</div>
+                    <div className="text-muted-foreground">{incident.summary ?? "No summary"}</div>
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                      <span>{getCheckLabel(incident.checkType)}</span>
+                      <span
+                        className={`rounded-full border px-2 py-0.5 uppercase tracking-[0.2em] ${getToneClasses(getIncidentTone(incident.severity))}`}
+                      >
+                        {incident.severity}
+                      </span>
+                      <span>{incident.status}</span>
+                    </div>
+                  </div>
+                  <a
+                    className="rounded-full border border-border px-3 py-1 text-[11px] uppercase tracking-[0.22em] text-muted-foreground transition hover:border-primary/40 hover:text-foreground"
+                    href={`/incidents/${incident.id}`}
+                  >
+                    Open
+                  </a>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      ) : null}
+
       <Card id="wordops" className="space-y-3 p-4 md:p-5">
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div>
             <div className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
               WordOps
             </div>
-            <h2 className="mt-1 text-base font-semibold text-foreground">WordOps runtime</h2>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              Live `wo` status plus the site inventory synced into this dashboard.
-            </p>
+            <h2 className="mt-1 text-base font-semibold text-foreground">Sites & stack</h2>
           </div>
           <div
             className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${getToneClasses(wordopsTone)}`}
@@ -731,31 +814,20 @@ export function ServerDetailView({
 
         {wordops.status === "missing" ? (
           <div className="rounded-lg border border-amber-500/30 bg-amber-500/12 px-3 py-3 text-sm text-amber-200">
-            <div className="font-medium">WordOps CLI was not detected on this server.</div>
-            <div className="mt-1 text-amber-200/90">
-              Install WordOps on the server, then reload this page.
-            </div>
+            <div className="font-medium">WordOps CLI not detected.</div>
           </div>
         ) : null}
 
         {wordops.status === "degraded" ? (
           <div className="rounded-lg border border-amber-500/30 bg-amber-500/12 px-3 py-3 text-sm text-amber-200">
-            <div className="font-medium">WordOps is installed, but the web stack is not ready yet.</div>
-            <div className="mt-1 text-amber-200/90">
-              Use <span className="font-medium">Install Web Stack</span> to provision Nginx, PHP, and SQL before creating sites.
-            </div>
+            <div className="font-medium">Stack incomplete. Install the web stack before creating sites.</div>
           </div>
         ) : null}
 
         {wordops.status === "ready" ? (
           <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/12 px-3 py-3 text-sm text-emerald-200">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <div>
-                <div className="font-medium">WordOps is ready for site management.</div>
-                <div className="mt-1 text-emerald-200/90">
-                  Sync sites or create the first WordPress site from this card.
-                </div>
-              </div>
+              <div className="font-medium">WordOps is ready for site management.</div>
               <div className="flex flex-wrap gap-1.5">
                 <span className="rounded-full border border-emerald-500/30 bg-card/80 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-emerald-200">
                   Live Sites {wordops.sites.length}
@@ -834,13 +906,8 @@ export function ServerDetailView({
 
         <form className="space-y-3 rounded-lg border border-border bg-card/70 p-3" onSubmit={handleCreateWordopsSite}>
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <div>
-              <div className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
-                New WordPress Site
-              </div>
-              <div className="mt-0.5 text-xs text-muted-foreground">
-                WordOps-first creation flow for a new managed site.
-              </div>
+            <div className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
+              New WordPress Site
             </div>
             <Button disabled={isPending || !wordopsReady} type="submit">
               Create Site
@@ -1075,20 +1142,15 @@ export function ServerDetailView({
 
       <Card id="recent-checks" className="space-y-2 p-4 md:p-5">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <div>
+          <div className="flex flex-wrap items-center gap-2">
             <div className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
-              Recent Checks
+              Checks
             </div>
-            <div className="mt-0.5 text-sm text-muted-foreground">
-              {checksPagination ? (
-                <span>
-                  Showing {checksPagination.offset + 1}-{checksPagination.offset + checksPagination.returned} of{" "}
-                  {checksPagination.total}
-                </span>
-              ) : (
-                <span>Latest checks for this server</span>
-              )}
-            </div>
+            {checksPagination ? (
+              <div className="text-xs text-muted-foreground">
+                {checksPagination.offset + 1}-{checksPagination.offset + checksPagination.returned} / {checksPagination.total}
+              </div>
+            ) : null}
           </div>
 
           <div className="flex flex-wrap gap-2">
@@ -1115,10 +1177,10 @@ export function ServerDetailView({
                 const incidentHref = getActiveIncidentHref(incidents, check.checkType);
 
                 const content = (
-                  <>
+                      <>
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div className="space-y-1">
-                        <div className="font-medium">{check.checkType}</div>
+                        <div className="font-medium">{getCheckLabel(check.checkType)}</div>
                         <div className="text-muted-foreground">{check.summary}</div>
                       </div>
                       {incidentHref ? (
@@ -1192,20 +1254,15 @@ export function ServerDetailView({
 
       <Card id="server-incidents" className="space-y-2 p-4 md:p-5">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <div>
+          <div className="flex flex-wrap items-center gap-2">
             <div className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
               Incidents
             </div>
-            <div className="mt-0.5 text-sm text-muted-foreground">
-              {incidentsPagination ? (
-                <span>
-                  Showing {incidentsPagination.offset + 1}-{incidentsPagination.offset + incidentsPagination.returned} of{" "}
-                  {incidentsPagination.total}
-                </span>
-              ) : (
-                <span>Latest incidents for this server</span>
-              )}
-            </div>
+            {incidentsPagination ? (
+              <div className="text-xs text-muted-foreground">
+                {incidentsPagination.offset + 1}-{incidentsPagination.offset + incidentsPagination.returned} / {incidentsPagination.total}
+              </div>
+            ) : null}
           </div>
 
           <Button
@@ -1233,6 +1290,7 @@ export function ServerDetailView({
                     <div className="font-medium">{incident.title}</div>
                     <div className="text-muted-foreground">{incident.summary ?? "No summary"}</div>
                     <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                      <span>{getCheckLabel(incident.checkType)}</span>
                       <span
                         className={`rounded-full border px-2 py-0.5 uppercase tracking-[0.2em] ${getToneClasses(getIncidentTone(incident.severity))}`}
                       >
@@ -1246,7 +1304,7 @@ export function ServerDetailView({
                     className="rounded-full border border-border px-3 py-1 text-[11px] uppercase tracking-[0.22em] text-muted-foreground transition hover:border-primary/40 hover:text-foreground"
                     href={`/incidents/${incident.id}`}
                   >
-                    Source
+                    Open
                   </a>
                 </div>
                 {incident.status === "open" ? (
@@ -1310,20 +1368,15 @@ export function ServerDetailView({
 
       <Card id="remediation-runs" className="space-y-2 p-4 md:p-5">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <div>
+          <div className="flex flex-wrap items-center gap-2">
             <div className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
               Remediation Runs
             </div>
-            <div className="mt-0.5 text-sm text-muted-foreground">
-              {runsPagination ? (
-                <span>
-                  Showing {runsPagination.offset + 1}-{runsPagination.offset + runsPagination.returned} of{" "}
-                  {runsPagination.total}
-                </span>
-              ) : (
-                <span>Latest remediation runs for this server</span>
-              )}
-            </div>
+            {runsPagination ? (
+              <div className="text-xs text-muted-foreground">
+                {runsPagination.offset + 1}-{runsPagination.offset + runsPagination.returned} / {runsPagination.total}
+              </div>
+            ) : null}
           </div>
 
           <Button disabled={isPending} onClick={() => loadRuns(0)} type="button" variant="secondary">
@@ -1343,7 +1396,7 @@ export function ServerDetailView({
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="space-y-1">
-                    <div className="font-medium">{run.actionType}</div>
+                    <div className="font-medium">{getRemediationLabel(run.actionType)}</div>
                     <div className="text-muted-foreground">
                       {run.outputSnippet ?? run.commandText ?? "No output"}
                     </div>
@@ -1355,7 +1408,7 @@ export function ServerDetailView({
                     className="rounded-full border border-border px-3 py-1 text-[11px] uppercase tracking-[0.22em] text-muted-foreground transition hover:border-primary/40 hover:text-foreground"
                     href={`/incidents/${run.incidentId}#remediation-${run.id}`}
                   >
-                    Source
+                    Open
                   </a>
                 </div>
               </div>
@@ -1392,29 +1445,25 @@ export function ServerDetailView({
 
       <Card id="activity-feed" className="space-y-2 p-4 md:p-5">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <div>
+          <div className="flex flex-wrap items-center gap-2">
             <div className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
-              Activity Feed
+              Activity
             </div>
-            <div className="mt-0.5 text-sm text-muted-foreground">
-              {activityPagination ? (
-                <span>
-                  Showing {activityPagination.offset + 1}-
-                  {activityPagination.offset + activityPagination.returned} of{" "}
-                  {activityPagination.total}
-                  {appliedActivityKindFilter !== "all" || appliedActivityEventType
-                    ? ` • filtered by ${[
-                        appliedActivityKindFilter !== "all" ? appliedActivityKindFilter : null,
-                        appliedActivityEventType || null,
-                      ]
-                        .filter(Boolean)
-                        .join(" / ")}`
-                    : ""}
-                </span>
-              ) : (
-                <span>Chronological server activity</span>
-              )}
-            </div>
+            {activityPagination ? (
+              <div className="text-xs text-muted-foreground">
+                {activityPagination.offset + 1}-{activityPagination.offset + activityPagination.returned} / {activityPagination.total}
+              </div>
+            ) : null}
+            {appliedActivityKindFilter !== "all" || appliedActivityEventType ? (
+              <div className="text-xs text-muted-foreground">
+                {[
+                  appliedActivityKindFilter !== "all" ? appliedActivityKindFilter : null,
+                  appliedActivityEventType || null,
+                ]
+                  .filter(Boolean)
+                  .join(" / ")}
+              </div>
+            ) : null}
           </div>
 
           <Button
@@ -1488,7 +1537,7 @@ export function ServerDetailView({
                         ? entry.payload.eventType
                         : entry.kind === "incident"
                           ? entry.payload.title
-                          : entry.payload.actionType}
+                          : getRemediationLabel(entry.payload.actionType)}
                     </div>
                     <div className="text-muted-foreground">
                       {entry.kind === "audit"
