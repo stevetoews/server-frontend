@@ -27,6 +27,7 @@ import {
   remediateIncident,
   runServerChecks,
   syncServerWordopsSites,
+  updateServerWordopsSite,
   type HealthCheckRecord,
   type IncidentRecord,
   type PaginationMeta,
@@ -37,6 +38,7 @@ import {
   type WordopsSiteRecord,
   type WordopsCreateSiteInput,
   type WordopsMutationResult,
+  type WordopsSiteUpdateInput,
 } from "@/lib/api";
 
 const DETAIL_PAGE_SIZE = 5;
@@ -102,6 +104,11 @@ interface WordopsTerminalState {
   title: string;
 }
 
+interface SiteUpdateDraft {
+  cacheProfile: "" | NonNullable<WordopsSiteUpdateInput["cacheProfile"]>;
+  phpVersion: "" | NonNullable<WordopsSiteUpdateInput["phpVersion"]>;
+}
+
 function buildCreateSiteCommand(input: WordopsCreateSiteInput) {
   const parts = ["wo", "site", "create", input.domain.trim(), `--${input.cacheProfile}`];
 
@@ -151,6 +158,58 @@ function applyTerminalResult(
     output: execution.output,
     status: execution.status,
   });
+}
+
+function buildUpdateSiteCommand(domain: string, input: WordopsSiteUpdateInput) {
+  const parts = ["wo", "site", "update", domain];
+
+  if (input.cacheProfile) {
+    parts.push(`--${input.cacheProfile}`);
+  }
+
+  if (input.phpVersion === "8.2") {
+    parts.push("--php82");
+  }
+
+  if (input.phpVersion === "8.3") {
+    parts.push("--php83");
+  }
+
+  if (input.letsEncrypt === true) {
+    parts.push("--letsencrypt");
+  }
+
+  if (input.letsEncrypt === false) {
+    parts.push("--letsencrypt=off");
+  }
+
+  if (input.hsts === true) {
+    parts.push("--hsts");
+  }
+
+  if (input.hsts === false) {
+    parts.push("--hsts=off");
+  }
+
+  return parts.join(" ");
+}
+
+function getInitialSiteUpdateDraft(site: WordopsSiteRecord): SiteUpdateDraft {
+  return {
+    cacheProfile:
+      site.cacheType === "wordpress" ? "wp" :
+      site.cacheType === "fastcgi_cache" ? "wpfc" :
+      site.cacheType === "redis" ? "wpredis" :
+      site.cacheType === "wp_super_cache" ? "wpsc" :
+      site.cacheType === "wp_rocket" ? "wprocket" :
+      site.cacheType === "cache_enabler" ? "wpce" :
+      "",
+    phpVersion:
+      site.phpVersion === "8.2" ||
+      site.phpVersion === "8.3"
+        ? site.phpVersion
+        : "",
+  };
 }
 
 function getActivitySourceHref(entry: ServerActivityItem) {
@@ -251,6 +310,8 @@ export function ServerDetailView({
   const [wordops, setWordops] = useState<WordopsOverview>(initialWordops);
   const [isWordopsLoading, setIsWordopsLoading] = useState(initialWordopsDeferred);
   const [sites, setSites] = useState<WordopsSiteRecord[]>(initialSites);
+  const [siteUpdateDrafts, setSiteUpdateDrafts] = useState<Record<string, SiteUpdateDraft>>({});
+  const [expandedSiteActions, setExpandedSiteActions] = useState<Record<string, boolean>>({});
   const [terminal, setTerminal] = useState<WordopsTerminalState | null>(null);
   const [showSiteAdvanced, setShowSiteAdvanced] = useState(false);
   const [siteForm, setSiteForm] = useState<WordopsCreateSiteInput>({
@@ -484,6 +545,48 @@ export function ServerDetailView({
           siteError instanceof Error
             ? siteError.message
             : `Unable to ${action} WordOps site`,
+        );
+      }
+    });
+  }
+
+  function handleUpdateWordopsSite(
+    domain: string,
+    title: string,
+    input: WordopsSiteUpdateInput,
+  ) {
+    setError(null);
+    setStatusMessage(null);
+    setIsWordopsLoading(false);
+    const commandText = buildUpdateSiteCommand(domain, input);
+    setTerminal({
+      title,
+      commandText,
+      output: `Executing ${title.toLowerCase()}...`,
+      status: "running",
+    });
+
+    startTransition(async () => {
+      try {
+        const payload = await updateServerWordopsSite(server.id, domain, input);
+        setWordops(payload.data.overview);
+        setSites(payload.data.sites);
+        applyTerminalResult(setTerminal, title, payload.data.execution);
+        setStatusMessage(`${title} completed for ${domain}.`);
+      } catch (siteError) {
+        setTerminal({
+          title,
+          commandText,
+          output:
+            siteError instanceof Error
+              ? siteError.message
+              : `Unable to complete ${title.toLowerCase()}`,
+          status: "failed",
+        });
+        setError(
+          siteError instanceof Error
+            ? siteError.message
+            : `Unable to complete ${title.toLowerCase()}`,
         );
       }
     });
@@ -752,6 +855,20 @@ export function ServerDetailView({
     // Checks are SSR-seeded. Runs stay lazy until needed.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [server.id, initialChecks, initialChecksPagination]);
+
+  useEffect(() => {
+    setSiteUpdateDrafts((current) => {
+      const next = { ...current };
+
+      for (const site of displayedSites) {
+        if (!next[site.domain]) {
+          next[site.domain] = getInitialSiteUpdateDraft(site);
+        }
+      }
+
+      return next;
+    });
+  }, [displayedSites]);
 
   useEffect(() => {
     if (pendingIncidentCount > 0 || runs.some((run) => run.status !== "succeeded")) {
@@ -1279,7 +1396,146 @@ export function ServerDetailView({
                     >
                       Delete
                     </Button>
+                    <Button
+                      disabled={isPending || !wordopsReady}
+                      onClick={() =>
+                        setExpandedSiteActions((current) => ({
+                          ...current,
+                          [site.domain]: !current[site.domain],
+                        }))
+                      }
+                      type="button"
+                      variant="secondary"
+                    >
+                      {expandedSiteActions[site.domain] ? "Hide Update" : "Update"}
+                    </Button>
                   </div>
+                  {expandedSiteActions[site.domain] ? (
+                    <div className="mt-3 space-y-3 rounded-lg border border-border/70 bg-background/30 p-3">
+                      <div className="grid gap-2 md:grid-cols-[minmax(0,1fr)_auto]">
+                        <label className="space-y-1">
+                          <span className="text-[11px] font-medium text-foreground">PHP version</span>
+                          <select
+                            className="h-10 w-full rounded-lg border border-border bg-background/70 px-3 text-sm text-foreground"
+                            onChange={(event) =>
+                              setSiteUpdateDrafts((current) => ({
+                                ...current,
+                                [site.domain]: {
+                                  ...(current[site.domain] ?? getInitialSiteUpdateDraft(site)),
+                                  phpVersion: event.target.value as SiteUpdateDraft["phpVersion"],
+                                },
+                              }))
+                            }
+                            value={(siteUpdateDrafts[site.domain] ?? getInitialSiteUpdateDraft(site)).phpVersion}
+                          >
+                            <option value="">Select PHP</option>
+                            <option value="8.2">PHP 8.2</option>
+                            <option value="8.3">PHP 8.3</option>
+                          </select>
+                        </label>
+                        <div className="flex items-end">
+                          <Button
+                            disabled={
+                              isPending ||
+                              !wordopsReady ||
+                              !(siteUpdateDrafts[site.domain] ?? getInitialSiteUpdateDraft(site)).phpVersion
+                            }
+                            onClick={() =>
+                              handleUpdateWordopsSite(site.domain, "Update Site PHP", {
+                                phpVersion: (siteUpdateDrafts[site.domain] ?? getInitialSiteUpdateDraft(site))
+                                  .phpVersion as NonNullable<WordopsSiteUpdateInput["phpVersion"]>,
+                              })
+                            }
+                            type="button"
+                            variant="secondary"
+                          >
+                            Apply PHP
+                          </Button>
+                        </div>
+                      </div>
+
+                      <div className="grid gap-2 md:grid-cols-[minmax(0,1fr)_auto]">
+                        <label className="space-y-1">
+                          <span className="text-[11px] font-medium text-foreground">Cache profile</span>
+                          <select
+                            className="h-10 w-full rounded-lg border border-border bg-background/70 px-3 text-sm text-foreground"
+                            onChange={(event) =>
+                              setSiteUpdateDrafts((current) => ({
+                                ...current,
+                                [site.domain]: {
+                                  ...(current[site.domain] ?? getInitialSiteUpdateDraft(site)),
+                                  cacheProfile: event.target.value as SiteUpdateDraft["cacheProfile"],
+                                },
+                              }))
+                            }
+                            value={(siteUpdateDrafts[site.domain] ?? getInitialSiteUpdateDraft(site)).cacheProfile}
+                          >
+                            <option value="">Select cache</option>
+                            <option value="wp">WordPress</option>
+                            <option value="wpfc">FastCGI cache</option>
+                            <option value="wpredis">Redis cache</option>
+                            <option value="wpsc">WP Super Cache</option>
+                            <option value="wprocket">WP Rocket</option>
+                            <option value="wpce">Cache Enabler</option>
+                          </select>
+                        </label>
+                        <div className="flex items-end">
+                          <Button
+                            disabled={
+                              isPending ||
+                              !wordopsReady ||
+                              !(siteUpdateDrafts[site.domain] ?? getInitialSiteUpdateDraft(site)).cacheProfile
+                            }
+                            onClick={() =>
+                              handleUpdateWordopsSite(site.domain, "Update Site Cache", {
+                                cacheProfile: (siteUpdateDrafts[site.domain] ?? getInitialSiteUpdateDraft(site))
+                                  .cacheProfile as NonNullable<WordopsSiteUpdateInput["cacheProfile"]>,
+                              })
+                            }
+                            type="button"
+                            variant="secondary"
+                          >
+                            Apply Cache
+                          </Button>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          disabled={isPending || !wordopsReady}
+                          onClick={() => handleUpdateWordopsSite(site.domain, "Enable SSL", { letsEncrypt: true })}
+                          type="button"
+                          variant="secondary"
+                        >
+                          Enable SSL
+                        </Button>
+                        <Button
+                          disabled={isPending || !wordopsReady}
+                          onClick={() => handleUpdateWordopsSite(site.domain, "Disable SSL", { letsEncrypt: false })}
+                          type="button"
+                          variant="secondary"
+                        >
+                          Disable SSL
+                        </Button>
+                        <Button
+                          disabled={isPending || !wordopsReady}
+                          onClick={() => handleUpdateWordopsSite(site.domain, "Enable HSTS", { hsts: true })}
+                          type="button"
+                          variant="secondary"
+                        >
+                          Enable HSTS
+                        </Button>
+                        <Button
+                          disabled={isPending || !wordopsReady}
+                          onClick={() => handleUpdateWordopsSite(site.domain, "Disable HSTS", { hsts: false })}
+                          type="button"
+                          variant="secondary"
+                        >
+                          Disable HSTS
+                        </Button>
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
               ))}
             </div>

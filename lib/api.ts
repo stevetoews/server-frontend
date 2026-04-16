@@ -168,6 +168,13 @@ export interface WordopsCreateSiteInput {
   vhostOnly?: boolean;
 }
 
+export interface WordopsSiteUpdateInput {
+  cacheProfile?: "wp" | "wpfc" | "wpredis" | "wpsc" | "wprocket" | "wpce";
+  hsts?: boolean;
+  letsEncrypt?: boolean;
+  phpVersion?: "8.2" | "8.3";
+}
+
 export interface WordopsMutationResult {
   commandText: string;
   output: string;
@@ -685,6 +692,65 @@ export function disableServerWordopsSite(serverId: string, domain: string) {
 
 export function deleteServerWordopsSite(serverId: string, domain: string) {
   return mutateServerWordopsSite(serverId, domain, "delete");
+}
+
+export async function updateServerWordopsSite(
+  serverId: string,
+  domain: string,
+  input: WordopsSiteUpdateInput,
+) {
+  const env = getClientEnv();
+  const response = await fetch(
+    `${env.NEXT_PUBLIC_API_BASE_URL}/servers/${serverId}/sites/${encodeURIComponent(domain)}/update`,
+    {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify(input),
+    },
+  );
+
+  const payload = await readJsonPayload<ApiEnvelope<{
+    execution: WordopsMutationResult;
+    overview: WordopsOverview;
+    server: ServerRecord;
+    sites: WordopsSiteRecord[];
+  }> | ApiErrorPayload>(response);
+
+  if (!response.ok) {
+    throw new Error(readApiErrorMessage((payload ?? {}) as ApiErrorPayload, "Unable to update WordOps site"));
+  }
+
+  if (payload) {
+    return payload as ApiEnvelope<{
+      execution: WordopsMutationResult;
+      overview: WordopsOverview;
+      server: ServerRecord;
+      sites: WordopsSiteRecord[];
+    }>;
+  }
+
+  const [overviewPayload, sitesPayload, serverPayload] = await Promise.all([
+    getServerWordops(serverId),
+    getServerSites(serverId),
+    getServer(serverId),
+  ]);
+
+  return {
+    ok: true,
+    data: {
+      execution: {
+        commandText: "",
+        output: "The site update command appears to have completed, but the server returned an incomplete response. Refreshed the latest server state.",
+        status: "succeeded" as const,
+      },
+      overview: overviewPayload.data.overview,
+      server: serverPayload.data.server,
+      sites: sitesPayload.data.sites,
+    },
+  };
 }
 
 export async function getServerChecks(serverId: string, options?: ListOptions & { cookie?: string }) {
