@@ -200,13 +200,13 @@ function getSitePhpLabel(site: WordopsSiteRecord, wordops: WordopsOverview) {
     return `PHP ${site.phpVersion}`;
   }
 
-  const fallbackVersion = wordops.version;
+  const fallbackVersion = wordops.infoOutput?.match(/php[^0-9]*([0-9]+\.[0-9]+)/i)?.[1];
 
   if (fallbackVersion) {
-    return `Default (${fallbackVersion})`;
+    return `PHP ${fallbackVersion}`;
   }
 
-  return "Default";
+  return "PHP Default";
 }
 
 function getCheckLabel(checkType?: string) {
@@ -257,6 +257,9 @@ export function ServerDetailView({
   const [incidentsPagination, setIncidentsPagination] =
     useState<PaginationMeta | null>(initialIncidentsPagination);
   const [incidentsOffset, setIncidentsOffset] = useState(0);
+  const [showResolvedIncidents, setShowResolvedIncidents] = useState(
+    initialIncidents.every((incident) => incident.status === "resolved"),
+  );
   const [runs, setRuns] = useState<RemediationRunRecord[]>([]);
   const [runsPagination, setRunsPagination] = useState<PaginationMeta | null>(null);
   const [runsOffset, setRunsOffset] = useState(0);
@@ -270,6 +273,11 @@ export function ServerDetailView({
     useState<ActivityKindFilter>(initialActivityKindFilter);
   const [appliedActivityEventType, setAppliedActivityEventType] =
     useState(initialActivityEventType);
+  const [showActivitySection, setShowActivitySection] = useState(
+    initialActivityKindFilter !== "all" ||
+      initialActivityEventType.length > 0 ||
+      initialActivity.length > 0,
+  );
   const [showActivityFilters, setShowActivityFilters] = useState(
     initialActivityKindFilter !== "all" || initialActivityEventType.length > 0,
   );
@@ -284,10 +292,12 @@ export function ServerDetailView({
   const unresolvedIncidents = incidents.filter(
     (incident) => incident.status === "open" || incident.status === "remediation_pending",
   );
+  const resolvedIncidents = incidents.filter((incident) => incident.status === "resolved");
   const openIncidentCount = incidents.filter((incident) => incident.status === "open").length;
   const pendingIncidentCount = incidents.filter(
     (incident) => incident.status === "remediation_pending",
   ).length;
+  const visibleIncidents = showResolvedIncidents ? incidents : unresolvedIncidents;
   const wordopsTone =
     wordops.status === "ready"
       ? "good"
@@ -708,6 +718,27 @@ export function ServerDetailView({
             <div className="rounded-full border border-border px-2.5 py-1 text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
               {server.onboardingStatus}
             </div>
+            {server.providerSnapshot ? (
+              <div className="rounded-full border border-border bg-card/70 px-2.5 py-1 text-[10px] text-muted-foreground">
+                {server.providerSnapshot.summary}
+              </div>
+            ) : null}
+            {server.providerSnapshot ? (
+              server.providerSnapshot.tags.length > 0 ? (
+                server.providerSnapshot.tags.map((tag) => (
+                  <div
+                    className="rounded-full border border-border bg-card/60 px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-muted-foreground"
+                    key={tag}
+                  >
+                    {tag}
+                  </div>
+                ))
+              ) : (
+                <div className="rounded-full border border-border bg-card/60 px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                  No tags
+                </div>
+              )
+            ) : null}
           </div>
         </div>
 
@@ -1118,11 +1149,18 @@ export function ServerDetailView({
                   <div className="flex items-start justify-between gap-2">
                     <div className="space-y-1">
                       <div className="flex flex-wrap items-center gap-1.5">
-                        <div className="font-medium">{site.domain}</div>
+                        <a
+                          className="font-medium text-foreground underline-offset-4 transition hover:text-primary hover:underline"
+                          href={`https://${site.domain}`}
+                          rel="noreferrer"
+                          target="_blank"
+                        >
+                          {site.domain}
+                        </a>
                         <span className="rounded-full border border-border px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
                           {getSiteTypeLabel(site)}
                         </span>
-                        <span className="rounded-full border border-border bg-background/40 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                        <span className="rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-primary">
                           {getSitePhpLabel(site, wordops)}
                         </span>
                         <span className="rounded-full border border-border bg-background/40 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
@@ -1309,13 +1347,25 @@ export function ServerDetailView({
           >
             Refresh
           </Button>
+          {resolvedIncidents.length > 0 ? (
+            <Button
+              disabled={isPending}
+              onClick={() => setShowResolvedIncidents((current) => !current)}
+              type="button"
+              variant="secondary"
+            >
+              {showResolvedIncidents ? "Hide Resolved" : `Show Resolved (${resolvedIncidents.length})`}
+            </Button>
+          ) : null}
         </div>
 
         <div className="space-y-2">
-          {incidents.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No incidents loaded yet.</p>
+          {visibleIncidents.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              {incidents.length === 0 ? "No incidents loaded yet." : "No open incidents."}
+            </p>
           ) : (
-            incidents.map((incident) => (
+            visibleIncidents.map((incident) => (
               <div
                 className="rounded-lg border border-border bg-card/70 p-2.5 text-sm text-foreground"
                 id={`incident-${incident.id}`}
@@ -1514,140 +1564,158 @@ export function ServerDetailView({
             ) : null}
           </div>
 
-          <Button
-            disabled={isPending}
-            onClick={() => setShowActivityFilters((current) => !current)}
-            type="button"
-            variant="secondary"
-          >
-            {showActivityFilters ? "Hide Filters" : "Filters"}
-          </Button>
-          <Button
-            disabled={isPending}
-            onClick={() => loadActivity(0)}
-            type="button"
-            variant="secondary"
-          >
-            Refresh
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              disabled={isPending}
+              onClick={() => setShowActivitySection((current) => !current)}
+              type="button"
+              variant="secondary"
+            >
+              {showActivitySection ? "Hide Activity" : "Show Activity"}
+            </Button>
+            {showActivitySection ? (
+              <>
+                <Button
+                  disabled={isPending}
+                  onClick={() => setShowActivityFilters((current) => !current)}
+                  type="button"
+                  variant="secondary"
+                >
+                  {showActivityFilters ? "Hide Filters" : "Filters"}
+                </Button>
+                <Button
+                  disabled={isPending}
+                  onClick={() => loadActivity(0)}
+                  type="button"
+                  variant="secondary"
+                >
+                  Refresh
+                </Button>
+              </>
+            ) : null}
+          </div>
         </div>
 
-        {showActivityFilters ? (
-          <div className="grid gap-2 rounded-lg border border-border bg-card/70 p-3 lg:grid-cols-[160px_minmax(0,1fr)_auto_auto]">
-            <label className="space-y-1 text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">
-              Kind
-              <select
-                className="h-10 w-full rounded-lg border border-border bg-background/70 px-3 text-sm font-normal uppercase tracking-normal text-foreground"
-                onChange={(event) => setActivityKindFilter(event.target.value as ActivityKindFilter)}
-                value={activityKindFilter}
-              >
-                {ACTIVITY_KIND_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </label>
+        {showActivitySection ? (
+          <>
+            {showActivityFilters ? (
+              <div className="grid gap-2 rounded-lg border border-border bg-card/70 p-3 lg:grid-cols-[160px_minmax(0,1fr)_auto_auto]">
+                <label className="space-y-1 text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">
+                  Kind
+                  <select
+                    className="h-10 w-full rounded-lg border border-border bg-background/70 px-3 text-sm font-normal uppercase tracking-normal text-foreground"
+                    onChange={(event) => setActivityKindFilter(event.target.value as ActivityKindFilter)}
+                    value={activityKindFilter}
+                  >
+                    {ACTIVITY_KIND_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
 
-            <label className="space-y-1 text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">
-              Event type
-              <input
-                className="h-10 w-full rounded-lg border border-border bg-background/70 px-3 text-sm text-foreground placeholder:text-muted-foreground"
-                onChange={(event) => setActivityEventType(event.target.value)}
-                placeholder="e.g. restart.nginx"
-                value={activityEventType}
-              />
-            </label>
+                <label className="space-y-1 text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">
+                  Event type
+                  <input
+                    className="h-10 w-full rounded-lg border border-border bg-background/70 px-3 text-sm text-foreground placeholder:text-muted-foreground"
+                    onChange={(event) => setActivityEventType(event.target.value)}
+                    placeholder="e.g. restart.nginx"
+                    value={activityEventType}
+                  />
+                </label>
 
-            <div className="flex items-end">
-              <Button disabled={isPending} onClick={handleApplyActivityFilters} type="button">
-                Apply
-              </Button>
-            </div>
-
-            <div className="flex items-end">
-              <Button disabled={isPending} onClick={handleClearActivityFilters} type="button" variant="secondary">
-                Clear
-              </Button>
-            </div>
-          </div>
-        ) : null}
-
-        <div className="space-y-2">
-          {activity.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              {appliedActivityKindFilter !== "all" || appliedActivityEventType
-                ? "No activity matched the current filters."
-                : "No activity loaded yet."}
-            </p>
-          ) : (
-            activity.map((entry) => (
-              <a
-                className="block rounded-lg border border-border bg-card/70 p-2.5 text-sm text-foreground transition hover:border-primary/40 hover:bg-accent/55"
-                href={getActivitySourceHref(entry)}
-                id={`activity-${entry.id}`}
-                key={entry.id}
-              >
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <div className="font-medium">
-                      {entry.kind === "audit"
-                        ? entry.payload.eventType
-                        : entry.kind === "incident"
-                          ? entry.payload.title
-                          : getRemediationLabel(entry.payload.actionType)}
-                    </div>
-                    <div className="text-muted-foreground">
-                      {entry.kind === "audit"
-                        ? `${entry.payload.actorType} • ${entry.payload.actorId}`
-                        : entry.kind === "incident"
-                          ? entry.payload.summary ?? "Incident opened"
-                          : entry.payload.outputSnippet ??
-                            entry.payload.commandText ??
-                            "Remediation run"}
-                    </div>
-                  </div>
-                  <div className="flex flex-col items-end gap-2">
-                    <span className="rounded-full border border-border px-2 py-0.5 text-[11px] uppercase tracking-[0.24em] text-muted-foreground">
-                      {entry.kind}
-                    </span>
-                    <span className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
-                      Open source
-                    </span>
-                  </div>
+                <div className="flex items-end">
+                  <Button disabled={isPending} onClick={handleApplyActivityFilters} type="button">
+                    Apply
+                  </Button>
                 </div>
-                <div className="mt-2 text-xs text-muted-foreground">
-                  {new Date(entry.createdAt).toLocaleString()}
-                </div>
-              </a>
-            ))
-          )}
-        </div>
 
-        {activityPagination ? (
-          <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
-            <div>
-              <span>{activityPagination.hasMore ? "More activity available" : "End of activity"}</span>
+                <div className="flex items-end">
+                  <Button disabled={isPending} onClick={handleClearActivityFilters} type="button" variant="secondary">
+                    Clear
+                  </Button>
+                </div>
+              </div>
+            ) : null}
+
+            <div className="space-y-2">
+              {activity.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  {appliedActivityKindFilter !== "all" || appliedActivityEventType
+                    ? "No activity matched the current filters."
+                    : "No activity loaded yet."}
+                </p>
+              ) : (
+                activity.map((entry) => (
+                  <a
+                    className="block rounded-lg border border-border bg-card/70 p-2.5 text-sm text-foreground transition hover:border-primary/40 hover:bg-accent/55"
+                    href={getActivitySourceHref(entry)}
+                    id={`activity-${entry.id}`}
+                    key={entry.id}
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <div className="font-medium">
+                          {entry.kind === "audit"
+                            ? entry.payload.eventType
+                            : entry.kind === "incident"
+                              ? entry.payload.title
+                              : getRemediationLabel(entry.payload.actionType)}
+                        </div>
+                        <div className="text-muted-foreground">
+                          {entry.kind === "audit"
+                            ? `${entry.payload.actorType} • ${entry.payload.actorId}`
+                            : entry.kind === "incident"
+                              ? entry.payload.summary ?? "Incident opened"
+                              : entry.payload.outputSnippet ??
+                                entry.payload.commandText ??
+                                "Remediation run"}
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-end gap-2">
+                        <span className="rounded-full border border-border px-2 py-0.5 text-[11px] uppercase tracking-[0.24em] text-muted-foreground">
+                          {entry.kind}
+                        </span>
+                        <span className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
+                          Open source
+                        </span>
+                      </div>
+                    </div>
+                    <div className="mt-2 text-xs text-muted-foreground">
+                      {new Date(entry.createdAt).toLocaleString()}
+                    </div>
+                  </a>
+                ))
+              )}
             </div>
-            <div className="flex gap-2">
-              <Button
-                disabled={isPending || activityOffset === 0}
-                onClick={() => loadActivity(Math.max(0, activityOffset - DETAIL_PAGE_SIZE))}
-                type="button"
-                variant="secondary"
-              >
-                Previous
-              </Button>
-              <Button
-                disabled={isPending || !activityPagination.hasMore}
-                onClick={() => loadActivity(activityOffset + DETAIL_PAGE_SIZE)}
-                type="button"
-                variant="secondary"
-              >
-                Next
-              </Button>
-            </div>
-          </div>
+
+            {activityPagination ? (
+              <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+                <div>
+                  <span>{activityPagination.hasMore ? "More activity available" : "End of activity"}</span>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    disabled={isPending || activityOffset === 0}
+                    onClick={() => loadActivity(Math.max(0, activityOffset - DETAIL_PAGE_SIZE))}
+                    type="button"
+                    variant="secondary"
+                  >
+                    Previous
+                  </Button>
+                  <Button
+                    disabled={isPending || !activityPagination.hasMore}
+                    onClick={() => loadActivity(activityOffset + DETAIL_PAGE_SIZE)}
+                    type="button"
+                    variant="secondary"
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
+            ) : null}
+          </>
         ) : null}
       </Card>
     </div>

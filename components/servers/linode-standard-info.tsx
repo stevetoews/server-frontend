@@ -19,29 +19,6 @@ export function LinodeStandardInfo({ server }: LinodeStandardInfoProps) {
 
   return (
     <div className="space-y-2.5">
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <div />
-        <div className="flex flex-wrap items-center justify-end gap-1.5">
-          <div className="rounded-full border border-border bg-card/70 px-2.5 py-1 text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-            {snapshot.summary}
-          </div>
-          {snapshot.tags.length > 0 ? (
-            snapshot.tags.map((tag) => (
-              <div
-                className="rounded-full border border-border bg-card/60 px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-muted-foreground"
-                key={tag}
-              >
-                {tag}
-              </div>
-            ))
-          ) : (
-            <div className="rounded-full border border-border bg-card/60 px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-              No tags
-            </div>
-          )}
-        </div>
-      </div>
-
       <div className="grid gap-x-5 gap-y-2 sm:grid-cols-2 xl:grid-cols-3">
         <div>
           <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
